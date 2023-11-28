@@ -1,14 +1,6 @@
 <script lang="ts">
-    let messages: String[] = [];
+    import Window from "$lib/Window.svelte"
 
 </script>
 
-<ol>
-    {#each messages as message}
-        <li>{message}</li>
-    {/each}
-</ol>
-
-<style>
-
-</style>
+<Window></Window>
