@@ -7,7 +7,10 @@ mod network;
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![profile::cmd_set_profile_name])
+        .invoke_handler(tauri::generate_handler![
+            profile::cmd_set_profile_name,
+            network::cmd_send_hello,
+        ])
         .manage(message::MessageHistory::new())
         .manage(profile::ProfileState::new())
         .manage(network::ConnectionState::new())

@@ -2,9 +2,9 @@ use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration, mem};
 use tauri::State;
 
 const BROADCAST_ADDR: &str = "255.255.255.255";
-const LISTEN_ADDR: &str = "0.0.0.0";
+const BROADCAST_PORT: &str = "59813";
 
-const BUF_SIZE: usize = 10000;
+const BUF_SIZE: usize = 1000;
 
 pub struct ConnectionState {
     socket: Arc<Mutex<UdpSocket>>,
@@ -12,8 +12,10 @@ pub struct ConnectionState {
 
 impl ConnectionState {
     pub fn new() -> ConnectionState {
-        let socket = UdpSocket::bind(format!("{LISTEN_ADDR}:0")).unwrap();
+        let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
         socket.set_broadcast(true).unwrap();
+        socket.set_nonblocking(true).unwrap();
+        socket.connect("0.0.0.0:0").unwrap();
 
 
         ConnectionState {
@@ -30,8 +32,8 @@ impl ConnectionState {
                     let socket = socket.lock().unwrap();
                     let mut buf = [0; BUF_SIZE];
                     match socket.recv(&mut buf) {
-                        Ok(received) => println!("received {received} bytes {:?}", &buf[..received]),
-                        Err(e) => println!("recv function failed: {e:?}"),
+                        Ok(received) => println!("received {received} bytes: {:#?}", &buf[..received]),
+                        _ => (),
                     }
                 }
                 thread::sleep(Duration::from_millis(100));
@@ -42,5 +44,8 @@ impl ConnectionState {
 
 #[tauri::command]
 pub fn cmd_send_hello(conn: State<ConnectionState>) {
-
+    let socket = conn.socket.lock().unwrap();
+    socket
+        .send_to(b"Hello World!", format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+        .expect("Couldn't send msg");
 }
