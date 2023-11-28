@@ -6,7 +6,7 @@
     let entered_name: String;
 
     function enterInfo() {
-        invoke('cmd_create_profile', {name: entered_name})
+        invoke('cmd_set_profile_name', {name: entered_name})
             .then((resp: any) => {
                 $profile = {
                     name: resp.name,

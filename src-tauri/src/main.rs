@@ -3,11 +3,14 @@
 
 mod message;
 mod profile;
+mod network;
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![profile::cmd_create_profile])
+        .invoke_handler(tauri::generate_handler![profile::cmd_set_profile_name])
         .manage(message::MessageHistory::new())
+        .manage(profile::ProfileState::new())
+        .manage(network::ConnectionState::new())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
