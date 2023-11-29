@@ -1,5 +1,6 @@
 <script lang="ts">
-	import EnterScreen from "./EnterScreen.svelte";
+	import EnterScreen from "$lib/EnterScreen.svelte";
+	import ChatScreen from "$lib/ChatScreen.svelte"
 	// import { appWindow } from '@tauri-apps/api/window';
 	import { invoke } from '@tauri-apps/api';
 	import { profile } from '$lib/stores';
@@ -14,7 +15,7 @@
 {#if $profile == null}
 	<EnterScreen></EnterScreen>
 {:else}
-	<h1>logged in, sending hello</h1>
+	<ChatScreen></ChatScreen>
 {/if}
 
 <style>

@@ -20,20 +20,47 @@
     }
 </script>
 
-<h1>Ektochat</h1>
+<div class="container">
+    <h1>Ektochat</h1>
 
-<form on:submit={enterInfo}>
-    <input 
-        type="text" 
-        placeholder="Enter your name" 
-        bind:value={entered_name}
-        />
+    <form on:submit={enterInfo}>
+        <input 
+            type="text" 
+            placeholder="Enter your name" 
+            bind:value={entered_name}
+            />
 
-    <input 
-        type="submit"
-        >
-</form>
+        <input 
+            type="submit"
+            >
+    </form>
+</div>
 
 <style>
+    .container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
 
+        margin: auto;
+    }
+
+    h1 {
+        font-size: 4rem;
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+
+    input[type="text"] {
+        padding: 1rem;
+        margin: 1rem;
+        text-align: center;
+    }
 </style>
