@@ -9,4 +9,15 @@
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
+	<style>
+		body {
+			background-color: var(--ctp-latte-base);
+			color: var(--ctp-latte-text);
+			caret-color: var(--ctp-latte-rosewater);
+		}
+
+		*::selection {
+			background-color: var(--ctp-latte-surface2);
+		}
+	</style>
 </html>
