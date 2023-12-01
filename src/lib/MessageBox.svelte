@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { MessageData } from "$lib/bindings/MessageData";
     import type { Message } from "$lib/bindings/Message";
-    import { msg_history } from "$lib/stores";
+    import { msg_history, profile } from "$lib/stores";
     import WaveIcon from '$lib/icons/wave.svg';
 
     export let data: MessageData;
@@ -37,14 +37,12 @@
     <aside id="timestamp">
         {date.toLocaleTimeString()}
     </aside> 
-    <section class="message-container">
+    <section class="message-container {(data.uid == $profile?.uid) ? "from-self": "from-other"}">
         <header>
             <span id="name">{data.name}</span>
             <span id="uid">0x{data.uid.toString(16)}</span>
         </header>
-        <main>
-            <span id="message">{message}</span>
-        </main>
+        <span id="message">{message}</span>
     </section>
     <button class="ack-container" 
          data-num-acks={acks.length} 
@@ -56,25 +54,31 @@
 </article>
 
 <style>
-
     .container {
         display: flex;
         flex-direction: row;
         align-items: center;
-
-
+        justify-content: center;
         user-select: none;
         -webkit-user-select: none;
+        width: 100%;
     }
 
     .message-container {
         border-radius: 4px;
         padding: 1rem;
         margin: 1rem;
-        width: 60vh;
+        width: 60ch;
         background-color: var(--ctp-latte-mantle);
-
     }
+
+    .message-container.from-self {
+        border: 1px solid var(--ctp-latte-overlay1);
+    }
+
+    /* .message-container.from-other {
+        
+    } */
 
     .message-container header {
         display: flex;
@@ -82,11 +86,6 @@
         justify-content: space-between;
     }
         
-    .message-container main {
-        padding-top: 1rem;
-        text-align: center;
-    }
-
     #timestamp {
         color: var(--ctp-latte-overlay0);
         user-select: text;
@@ -108,11 +107,15 @@
     #message {
         user-select: text;
         -webkit-user-select: text;
+
+        padding-top: 1rem;
+        text-align: left;
+        display: inline-block;
     }
 
     .ack-container {
         position: relative;
-        top: 0;
+        right: 0;
 
         /* set up underline transition*/
         background: 
@@ -122,12 +125,13 @@
         background-position: 100% 100%, 0 100%;
         background-repeat: no-repeat;
 
-        transition: background-size 400ms, top 0.25s ease-in-out;
+        transition: background-size 400ms, right 0.25s ease-in-out;
     }
 
     .ack-container:hover {
-        top: -0.33em;
+        right: -0.33em;
         background-size: 0 0.1em, 100% 0.1em;
+
     }
 
     .ack-container:after {
@@ -142,5 +146,21 @@
         filter: invert(39%) sepia(94%) saturate(4642%) hue-rotate(214deg) brightness(96%) contrast(100%);
     }
 
+    .ack-container:hover #ack {
+        animation-name: wave-animation;
+        animation-duration: 2.5s; 
+        transform-origin: 50% 80%;
+    }
 
+    @keyframes wave-animation {
+        /* https://codepen.io/jakejarvis/pen/pBZWZw */
+        0% { transform: rotate( 0.0deg) }
+        10% { transform: rotate(14.0deg) }  /* The following five values can be played with to make the waving more or less extreme */
+        20% { transform: rotate(-8.0deg) }
+        30% { transform: rotate(14.0deg) }
+        40% { transform: rotate(-4.0deg) }
+        50% { transform: rotate(10.0deg) }
+        60% { transform: rotate( 0.0deg) }  /* Reset for the last half to pause */
+        100% { transform: rotate( 0.0deg) }
+    }
 </style>
