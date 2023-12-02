@@ -32,14 +32,19 @@ fn generate_random_name() -> String {
 } 
 
 #[tauri::command]
-pub fn cmd_set_profile_name(name: &str, profile: State<ProfileState>, conn: State<ConnectionState>) -> Profile {
+pub fn cmd_set_profile_name(
+    name: &str, 
+    profile: State<ProfileState>, 
+    conn: State<ConnectionState>,
+    window: tauri::Window,
+) -> Profile {
     let mut profile = profile.mtx.lock().unwrap();
         
     if name != "" {
         profile.name = String::from(name);
     }
 
-    conn.start_listen();
+    conn.start_listen(window);
 
     profile.clone()
 }

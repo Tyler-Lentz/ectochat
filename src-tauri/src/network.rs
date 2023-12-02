@@ -1,6 +1,5 @@
-use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration, };
-use serde::Serialize;
-use tauri::{State, Manager};
+use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration, ffi::CStr, };
+use tauri::State;
 use crate::message::{Message, MessageData};
 use crate::profile::ProfileState;
 use crate::utilities;
@@ -27,7 +26,7 @@ impl ConnectionState {
         }
     }
 
-    pub fn start_listen(&self) {
+    pub fn start_listen(&self, window: tauri::Window) {
         let socket = self.socket.clone();
 
         thread::spawn(move || {
@@ -36,7 +35,13 @@ impl ConnectionState {
                     let socket = socket.lock().unwrap();
                     let mut buf = [0; BUF_SIZE];
                     match socket.recv(&mut buf) {
-                        Ok(received) => println!("received {received} bytes: {:#?}", &buf[..received]),
+                        Ok(received) => {
+                            println!("Received {received} bytes");  
+                            // TODO handle these errors!! VERY IMPORTANT!
+                            let buf = CStr::from_bytes_until_nul(&buf).unwrap().to_bytes();
+                            let msg: Message = serde_json::from_slice(buf).unwrap();
+                            let _ = window.emit("evt_new_msg", msg);
+                        },
                         _ => (),
                     }
                 }
