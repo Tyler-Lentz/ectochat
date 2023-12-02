@@ -8,9 +8,29 @@
 
     let rec_messages: HTMLElement;
 
+    function getMsgUid(m: Message | undefined) {
+        if (m == undefined) return 0;
+
+        if ("Ack" in m) {
+            return m.Ack.uid;
+        } else if ("Text" in m) {
+            return m.Text.uid;
+        } else if ("Hello" in m) {
+            return m.Hello.uid;
+        } else if ("Image" in m) {
+            return m.Image.uid;
+        } else {
+            return 0;
+        }
+    }
+
     appWindow.listen("evt_new_msg", (e) => {
         msg_history.update(hist => [...hist, e.payload as Message]);
-        if (rec_messages.scrollTop + rec_messages.clientHeight >= rec_messages.scrollHeight) {
+
+        let scrolled_to_bottom = rec_messages.scrollTop + rec_messages.clientHeight >= rec_messages.scrollHeight;
+        let from_self = getMsgUid($msg_history.at(-1)) == $profile?.uid;
+
+        if (scrolled_to_bottom || from_self) {
             setTimeout(() => {
                 rec_messages.scrollTo({top: rec_messages.scrollHeight, behavior: "smooth"});
             }, 0)
