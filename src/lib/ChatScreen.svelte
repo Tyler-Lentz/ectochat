@@ -4,137 +4,32 @@
     import type { Message } from "$lib/bindings/Message";
 	import { msg_history, profile } from "$lib/stores";
 	import InputBox from "./InputBox.svelte";
+    import { appWindow } from "@tauri-apps/api/window";
 
-    let data: MessageData = {
-        name: "Tyler",
-        uid: ($profile?.uid) ? $profile.uid : BigInt(0),
-        mid: BigInt(1908140349),
-        timestamp: BigInt(1701221985),
-        payload: [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33],
-    };
+    appWindow.listen("evt_new_msg", (e) => {
+        let msg = e.payload as Message;
+        if ("Text" in msg) {
+            msg_history.update(hist => [...hist, msg]);
+        } else {
+            // TODO: other types of messages
+        }
+    });
 
-    let data2: MessageData = {
-        name: "John",
-        uid: BigInt(9210719247023),
-        mid: BigInt(2908140349),
-        timestamp: BigInt(1701222985),
-        payload: data.payload.concat(data.payload.concat(data.payload.concat(data.payload)))
-    };
-
-    $msg_history = [
-        {
-            "Ack": {
-                mid: BigInt(1908140349),
-                uid: BigInt(9210719247023),
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: BigInt(8210719247023),
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-        {
-            "Ack": {
-                mid: BigInt(2908140349),
-                uid: null
-            }
-        },
-    ]
 </script>
 
 <main>
     <section id="rec-messages">
-        <div>
-            <MessageBox
-                data={data}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
-        <div>
-            <MessageBox
-                data={data2}
-                >
-            </MessageBox>
-        </div>
+        {#each $msg_history as msg}
+            {#if "Hello" in msg}
+                <div>
+                    <MessageBox data={msg.Hello} />
+                </div>
+            {:else if "Text" in msg}
+                <div>
+                    <MessageBox data={msg.Text} />
+                </div>
+            {/if}
+        {/each}
     </section>
     <section id="input-message">
         <InputBox>

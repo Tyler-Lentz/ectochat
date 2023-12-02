@@ -1,6 +1,6 @@
 use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration, };
 use serde::Serialize;
-use tauri::State;
+use tauri::{State, Manager};
 use crate::message::{Message, MessageData};
 use crate::profile::ProfileState;
 use crate::utilities;
@@ -55,7 +55,12 @@ pub fn cmd_send_hello(conn: State<ConnectionState>) {
 }
 
 #[tauri::command]
-pub fn cmd_send_text(msg: &str, conn: State<ConnectionState>, profile: State<ProfileState>) {
+pub fn cmd_send_text(
+    msg: &str,
+    conn: State<ConnectionState>,
+    profile: State<ProfileState>,
+    window: tauri::Window
+) {
     let profile = profile.mtx.lock().unwrap();
 
     let msg = Message::Text(MessageData::new(
@@ -66,10 +71,12 @@ pub fn cmd_send_text(msg: &str, conn: State<ConnectionState>, profile: State<Pro
         msg.as_bytes().to_vec(),
     ));
 
-    let msg = serde_json::to_string(&msg).unwrap();
+    let msg_json = serde_json::to_string(&msg).unwrap();
 
     let socket = conn.socket.lock().unwrap();
     socket
-        .send_to(msg.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+        .send_to(msg_json.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
         .expect("Couldn't send msg");
+
+    let _ = window.emit("evt_new_msg", msg);
 }
