@@ -15,11 +15,9 @@ pub struct ConnectionState {
 
 impl ConnectionState {
     pub fn new() -> ConnectionState {
-        let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+        let socket = UdpSocket::bind(format!("0.0.0.0:{BROADCAST_PORT}")).unwrap();
         socket.set_broadcast(true).unwrap();
         socket.set_nonblocking(true).unwrap();
-        socket.connect("0.0.0.0:0").unwrap();
-
 
         ConnectionState {
             socket: Arc::new(Mutex::new(socket)),
@@ -34,10 +32,11 @@ impl ConnectionState {
                 {
                     let socket = socket.lock().unwrap();
                     let mut buf = [0; BUF_SIZE];
-                    match socket.recv(&mut buf) {
-                        Ok(received) => {
-                            println!("Received {received} bytes");  
+                    match socket.recv_from(&mut buf) {
+                        Ok((received, addr)) => {
+                            println!("Received {received} bytes from {addr}");  
                             // TODO handle these errors!! VERY IMPORTANT!
+                            // TODO add to message history
                             let buf = CStr::from_bytes_until_nul(&buf).unwrap().to_bytes();
                             let msg: Message = serde_json::from_slice(buf).unwrap();
                             let _ = window.emit("evt_new_msg", msg);
@@ -52,10 +51,22 @@ impl ConnectionState {
 }
 
 #[tauri::command]
-pub fn cmd_send_hello(conn: State<ConnectionState>) {
+pub fn cmd_send_hello(conn: State<ConnectionState>, profile: State<ProfileState>) {
+    let profile = profile.mtx.lock().unwrap();
+
+    let hello_msg = Message::Hello(MessageData::new(
+        profile.name.clone(),
+        profile.uid,
+        utilities::gen_rand_id(),
+        utilities::get_curr_time(),
+        "Hello World!".as_bytes().to_vec()
+    ));
+
+    let msg_json = serde_json::to_string(&hello_msg).unwrap();
+
     let socket = conn.socket.lock().unwrap();
     socket
-        .send_to(b"Hello World!", format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+        .send_to(msg_json.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
         .expect("Couldn't send msg");
 }
 
@@ -83,5 +94,5 @@ pub fn cmd_send_text(
         .send_to(msg_json.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
         .expect("Couldn't send msg");
 
-    let _ = window.emit("evt_new_msg", msg);
+    // let _ = window.emit("evt_new_msg", msg);
 }
