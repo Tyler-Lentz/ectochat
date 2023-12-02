@@ -6,19 +6,21 @@
 	import InputBox from "./InputBox.svelte";
     import { appWindow } from "@tauri-apps/api/window";
 
+    let rec_messages: HTMLElement;
+
     appWindow.listen("evt_new_msg", (e) => {
-        let msg = e.payload as Message;
-        if ("Text" in msg) {
-            msg_history.update(hist => [...hist, msg]);
-        } else {
-            // TODO: other types of messages
+        msg_history.update(hist => [...hist, e.payload as Message]);
+        if (rec_messages.scrollTop + rec_messages.clientHeight >= rec_messages.scrollHeight) {
+            setTimeout(() => {
+                rec_messages.scrollTo({top: rec_messages.scrollHeight, behavior: "smooth"});
+            }, 0)
         }
     });
 
 </script>
 
 <main>
-    <section id="rec-messages">
+    <section id="rec-messages" bind:this={rec_messages}>
         {#each $msg_history as msg}
             {#if "Hello" in msg}
                 <div>
