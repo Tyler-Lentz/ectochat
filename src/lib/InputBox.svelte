@@ -1,20 +1,37 @@
 <script lang="ts">
     import { profile } from '$lib/stores';
+	import type { Message } from '$lib/bindings/Message';
+
+    import { invoke } from '@tauri-apps/api'
 
     let current_time = new Date();
-
     setInterval(() => {
         current_time = new Date();
     }, 1000)
+
+    let message_str: string;
+
+    function handleSend(e: Event) {
+        e.preventDefault();
+
+        if (message_str.length > 0) {
+            invoke('cmd_send_text', {msg: message_str});
+
+            message_str = '';
+        }
+    }
 </script>
 
-<div id="container">
+<form id="container" on:submit={handleSend}>
     <div id="metadata">
         <span id="timestamp">{current_time.toLocaleTimeString()}</span>
         <span id="name">{$profile?.name}</span>
     </div>
-    <input type="text" placeholder="Enter message here"/>
-</div>
+    <input type="text" 
+           placeholder="Enter message here"
+           bind:value={message_str}
+           />
+</form>
 
 <style>
     #container {

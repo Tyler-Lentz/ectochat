@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
-#[derive(TS, Serialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Debug)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub enum Message {
@@ -12,7 +12,7 @@ pub enum Message {
     Ack{mid: u64, uid: Option<u64>},
 }
 
-#[derive(TS, Serialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Debug)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct MessageData {

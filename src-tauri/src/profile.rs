@@ -1,28 +1,26 @@
-use std::{time::{SystemTime, UNIX_EPOCH}, sync::{Arc, Mutex}};
+use std::{time::{SystemTime, UNIX_EPOCH}, sync::Mutex};
 use serde::Serialize;
 use ts_rs::TS;
 use tauri::State;
 
 use crate::network::ConnectionState;
+use crate::utilities;
 
 #[derive(TS, Serialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct Profile {
-    name: String,
-    uid: u64,
-    join_time: u64,
+    pub name: String,
+    pub uid: u64,
+    pub join_time: u64,
 }
 
 impl Profile {
     pub fn new(name: String) -> Profile {
         Profile {
             name,
-            uid: rand::random(),
-            join_time: match SystemTime::now().duration_since(UNIX_EPOCH) {
-                Ok(n) => n.as_secs(),
-                Err(_) => 0,
-            },
+            uid: utilities::gen_rand_id(),
+            join_time: utilities::get_curr_time(),
         }
     }
 }
@@ -47,7 +45,7 @@ pub fn cmd_set_profile_name(name: &str, profile: State<ProfileState>, conn: Stat
 }
 
 pub struct ProfileState {
-    mtx: Mutex<Profile>,
+    pub mtx: Mutex<Profile>,
 }
 
 impl ProfileState {

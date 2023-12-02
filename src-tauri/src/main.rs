@@ -4,12 +4,14 @@
 mod message;
 mod profile;
 mod network;
+mod utilities;
 
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             profile::cmd_set_profile_name,
             network::cmd_send_hello,
+            network::cmd_send_text,
         ])
         .manage(message::MessageHistory::new())
         .manage(profile::ProfileState::new())
