@@ -4,20 +4,21 @@
     import { msg_history, profile } from "$lib/stores";
     import EyeIcon from '$lib/icons/eye.svg';
     import Canvas from '$lib/Canvas.svelte';
+	import { PROFILE_PIC_SIZE } from "$lib/contants";
 	import { onMount } from "svelte";
 
 
     let canvas: Canvas;
+    export let data: MessageData;
+
     onMount(() => {
         let imageData = new ImageData(
-            new Uint8ClampedArray($profile?.pic || []),
-            128, 
-            128
+            new Uint8ClampedArray(data.pic),
+            PROFILE_PIC_SIZE, 
+            PROFILE_PIC_SIZE 
         );
         canvas.setImageData(imageData);
     });
-
-    export let data: MessageData;
 
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
     const date = new Date(Number(data.timestamp) * 1000)
@@ -53,8 +54,8 @@
             <div class="canvas-container">
                 <Canvas 
                     bind:this={canvas}
-                    width={128}
-                    height={128}
+                    width={PROFILE_PIC_SIZE}
+                    height={PROFILE_PIC_SIZE}
                     editable={false}
                     color={'black'}
                     />

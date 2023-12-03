@@ -5,6 +5,7 @@
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
 	import { onMount } from 'svelte';
+	import { PROFILE_PIC_SIZE } from '$lib/contants';
 
     let current_time = new Date();
     setInterval(() => {
@@ -16,8 +17,8 @@
     onMount(() => {
         let imageData = new ImageData(
             new Uint8ClampedArray($profile?.pic || []),
-            128, 
-            128
+            PROFILE_PIC_SIZE, 
+            PROFILE_PIC_SIZE 
         );
         canvas.setImageData(imageData);
     });
@@ -40,8 +41,8 @@
     <div id="canvas-container">
         <Canvas 
             bind:this={canvas}
-            width={128}
-            height={128}
+            width={PROFILE_PIC_SIZE}
+            height={PROFILE_PIC_SIZE}
             editable={false}
             color={'black'}
             />

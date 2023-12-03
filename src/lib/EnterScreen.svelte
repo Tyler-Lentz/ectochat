@@ -3,6 +3,7 @@
     import { profile } from '$lib/stores';
     import type { Profile } from '$lib/bindings/Profile';
     import Canvas from '$lib/Canvas.svelte';
+    import { PROFILE_PIC_SIZE } from '$lib/contants';
 
     let entered_name: String;
     let canvas: Canvas;
@@ -45,8 +46,8 @@
         Draw your avatar:
         <Canvas
             bind:this={canvas}
-            width={128}
-            height={128}
+            width={PROFILE_PIC_SIZE}
+            height={PROFILE_PIC_SIZE}
             editable={true}
             color={"black"}
             />

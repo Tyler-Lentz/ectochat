@@ -1,0 +1,1 @@
+export const PROFILE_PIC_SIZE=128;
