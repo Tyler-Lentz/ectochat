@@ -21,7 +21,7 @@
 </script>
 
 <div class="container">
-    <h1>Ektochat</h1>
+    <h1>ectochat</h1>
 
     <form on:submit={enterInfo}>
         <input 
