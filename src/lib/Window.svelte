@@ -17,7 +17,3 @@
 {:else}
 	<ChatScreen></ChatScreen>
 {/if}
-
-<style>
-
-</style>
