@@ -3,34 +3,62 @@
 	import type { Message } from '$lib/bindings/Message';
 
     import { invoke } from '@tauri-apps/api'
+	import Canvas from '$lib/Canvas.svelte';
+	import { onMount } from 'svelte';
 
     let current_time = new Date();
     setInterval(() => {
         current_time = new Date();
     }, 1000)
 
+
+    let canvas: Canvas;
+    onMount(() => {
+        let imageData = new ImageData(
+            new Uint8ClampedArray($profile?.pic || []),
+            128, 
+            128
+        );
+        canvas.setImageData(imageData);
+    });
+
     let message_str: string;
+    function checkForEnter(e: KeyboardEvent) {
+        if (e.code == "Enter") {
+            e.preventDefault();
+            if (message_str.length > 0) {
+                invoke('cmd_send_text', {msg: message_str});
 
-    function handleSend(e: Event) {
-        e.preventDefault();
-
-        if (message_str.length > 0) {
-            invoke('cmd_send_text', {msg: message_str});
-
-            message_str = '';
+                message_str = '';
+            }
         }
     }
+
 </script>
 
-<form id="container" on:submit={handleSend}>
-    <div id="metadata">
-        <span id="timestamp">{current_time.toLocaleTimeString()}</span>
-        <span id="name">{$profile?.name}</span>
+<form id="container" >
+    <div id="canvas-container">
+        <Canvas 
+            bind:this={canvas}
+            width={128}
+            height={128}
+            editable={false}
+            color={'black'}
+            />
     </div>
-    <input type="text" 
-           placeholder="Enter message here"
-           bind:value={message_str}
-           />
+
+    <div id="message-container">
+        <header>
+            <span id="name">{$profile?.name}</span>
+            <span id="uid">0x{$profile?.uid.toString(16)}</span>
+        </header>
+        <textarea 
+            wrap="soft"
+            placeholder="Enter message here"
+            bind:value={message_str}
+            on:keypress={checkForEnter}
+            />
+    </div>
 </form>
 
 <style>
@@ -44,22 +72,53 @@
         height: 100%;
     }
 
-    #metadata {
+    #canvas-container {
+        margin-right: auto;
+        display: flex;
+        scale: 0.75;
+    }
+
+    #message-container {
+        background-color: var(--ctp-latte-base);
+        border-radius: 4px;
+        border: 1px solid var(--ctp-latte-overlay1);
+        padding: 1em;
+        margin: 1em;
+
+        width: min(100%, 60ch);
+
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-
+        margin-right: auto;
+        align-items: center;
         user-select: text;
         -webkit-user-select: text;
+    }
+
+    #message-container > header {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
     }
 
     #name {
         color: var(--ctp-latte-blue);
     }
 
-    input {
-        width: 60ch;
+    #uid {
+        color: var(--ctp-latte-overlay0);
+    }
+
+    textarea {
+        background-color: inherit;
+        border: none;
+        outline: 0;
+        width: 100%;
+        min-height: 4ch;
         margin: 1rem;
         padding: 1rem;
+        resize: none;
     }
+
 </style>

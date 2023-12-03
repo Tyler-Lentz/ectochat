@@ -3,6 +3,19 @@
     import type { Message } from "$lib/bindings/Message";
     import { msg_history, profile } from "$lib/stores";
     import EyeIcon from '$lib/icons/eye.svg';
+    import Canvas from '$lib/Canvas.svelte';
+	import { onMount } from "svelte";
+
+
+    let canvas: Canvas;
+    onMount(() => {
+        let imageData = new ImageData(
+            new Uint8ClampedArray($profile?.pic || []),
+            128, 
+            128
+        );
+        canvas.setImageData(imageData);
+    });
 
     export let data: MessageData;
 
@@ -37,12 +50,21 @@
     <aside id="timestamp">
         {date.toLocaleTimeString()}
     </aside> 
+            <div class="canvas-container">
+                <Canvas 
+                    bind:this={canvas}
+                    width={128}
+                    height={128}
+                    editable={false}
+                    color={'black'}
+                    />
+            </div>
     <section class="message-container {(data.uid == $profile?.uid) ? "from-self": "from-other"}">
         <header>
             <span id="name">{data.name}</span>
             <span id="uid">0x{data.uid.toString(16)}</span>
         </header>
-        <span id="message">{message}</span>
+        <textarea id="message">{message}</textarea>
     </section>
     <button class="ack-container" 
          data-num-acks={acks.length} 
@@ -67,6 +89,7 @@
     .message-container {
         border-radius: 4px;
         padding: 1rem;
+        padding-bottom: 0;
         margin: 1rem;
         width: 60ch;
         background-color: var(--ctp-latte-mantle);
@@ -111,6 +134,19 @@
         padding-top: 1rem;
         text-align: left;
         display: inline-block;
+
+        background-color: inherit;
+        border: none;
+        outline: 0;
+        width: 100%;
+        min-height: 1ch;
+        max-height: 8ch;
+        resize: none;
+    }
+
+    .canvas-container {
+        align-self: flex-start;
+        scale: 0.75;
     }
 
     .ack-container {

@@ -9,7 +9,7 @@ mod utilities;
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            profile::cmd_set_profile_name,
+            profile::cmd_personalize_new_profile,
             network::cmd_send_hello,
             network::cmd_send_text,
         ])
