@@ -93,6 +93,4 @@ pub fn cmd_send_text(
     socket
         .send_to(msg_json.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
         .expect("Couldn't send msg");
-
-    // let _ = window.emit("evt_new_msg", msg);
 }
