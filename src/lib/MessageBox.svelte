@@ -6,7 +6,7 @@
     import Canvas from '$lib/Canvas.svelte';
 	import { PROFILE_PIC_SIZE } from "$lib/contants";
 	import { onMount } from "svelte";
-    import { openModal } from 'svelte-modals';
+    import { openModal, closeModal } from 'svelte-modals';
     import Modal from '$lib/Modal.svelte';
 
 
@@ -59,11 +59,10 @@
     }
 
     function leaveHoverAcks() {
+        console.log("LEAAVE")
         hovering = false;
         clearTimeout(timeout_code);
-    }
-
-    function clickAcks() {
+        closeModal()
     }
 
 </script>
@@ -90,8 +89,7 @@
     <button class="ack-container" 
          data-num-acks={acks.length} 
          data-acks={acks}
-         on:click={clickAcks}
-         on:mouseover={hoverAcks}
+         on:mouseenter={hoverAcks}
          on:mouseleave={leaveHoverAcks}
          >
         <img id="ack" src={EyeIcon} alt="Acks"/>
@@ -174,9 +172,6 @@
     }
 
     .ack-container {
-        position: relative;
-        top: 0;
-
         /* set up underline transition*/
         background: 
             linear-gradient(to right, var(--ctp-latte-base), var(--ctp-latte-base)),
@@ -184,17 +179,16 @@
         background-size: 100% 0.1em, 0 0.1em;
         background-position: 100% 100%, 0 100%;
         background-repeat: no-repeat;
+        z-index: 100; /* so that when modal covers screen mouseleave event still tracks this element */
 
-        transition: background-size 1s, top 0.25s ease-in-out;
+        transition: background-size 1s;
 
         display: flex;
         flex-direction: row; /* make num appear to side */
     }
 
     .ack-container:hover {
-        top: -0.33em;
         background-size: 0 0.1em, 100% 0.1em;
-
     }
 
     .ack-container:after {
