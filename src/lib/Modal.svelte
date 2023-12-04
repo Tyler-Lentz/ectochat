@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-    import { scale } from 'svelte/transition';
-	import { quintOut } from 'svelte/easing';
-
     // Slightly modified from svelte-modal documentation here:
     // https://www.npmjs.com/package/svelte-modals
+
+    // TODO: rename to AckModal.svelte
+    // and pass in ack information
 
     import { closeModal } from 'svelte-modals'
 	import type { Writable } from 'svelte/store';
@@ -15,16 +14,12 @@
     export let message: string;
 
     export let startClose: Writable<boolean>;
-    let local: boolean = false;
 
     let contents: HTMLDivElement;
     startClose.subscribe((new_val) => {
         if (new_val) {
-            local = true;
-
             setTimeout(() => {
                 startClose.set(false);
-                local = false;
                 closeModal();
             }, 500);
         } 
@@ -34,7 +29,7 @@
 
 {#if isOpen}
 <div role="dialog" class="modal">
-    <div bind:this={contents} class="contents" data-open={isOpen} data-close={local}>
+    <div bind:this={contents} class="contents" data-open={isOpen} data-close={$startClose}>
         <h2>{title}</h2>
         <p>{message}</p>
         <div class="actions">
