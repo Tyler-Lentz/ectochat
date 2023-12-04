@@ -136,13 +136,13 @@
 <style>
     #container {
         scale: 1;
-        transition: scale 0.5s ease-in-out;
+        transition: scale 1s ease-in-out;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
 
-        padding: 2rem;
+        padding: 1rem;
     }
 
     @media (min-width: 480px) {
