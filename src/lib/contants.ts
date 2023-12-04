@@ -1,1 +1,1 @@
-export const PROFILE_PIC_SIZE=128;
+export const PROFILE_PIC_SIZE=96;

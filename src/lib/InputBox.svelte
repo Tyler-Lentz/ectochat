@@ -44,7 +44,6 @@
             width={PROFILE_PIC_SIZE}
             height={PROFILE_PIC_SIZE}
             editable={false}
-            color={'black'}
             />
     </div>
 

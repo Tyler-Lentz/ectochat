@@ -57,7 +57,6 @@
                     width={PROFILE_PIC_SIZE}
                     height={PROFILE_PIC_SIZE}
                     editable={false}
-                    color={'black'}
                     />
             </div>
     <section class="message-container {(data.uid == $profile?.uid) ? "from-self": "from-other"}">
@@ -148,6 +147,7 @@
     .canvas-container {
         align-self: flex-start;
         scale: 0.75;
+        margin-top: 1.5em;
     }
 
     .ack-container {
