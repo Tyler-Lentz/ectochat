@@ -30,11 +30,11 @@
         // otherwise, it will be a hex string of the UID
         acks = new_hist
                 .reduce((acked_uids, current) => {
-                    if ("Ack" in current && current.Ack.mid == data.mid) {
+                    if ("Ack" in current && current.Ack.mid == data.mid && current.Ack.uid != $profile?.uid) {
                         if (current.Ack.uid == null) {
                             return acked_uids.concat("Anonymous");
                         } 
-                        return acked_uids.concat("0x" + current.Ack.uid.toString(16));
+                        return acked_uids.concat(current.Ack.uid.toString(16));
                     }
                     return acked_uids;
                 }, <string[]>[])
@@ -62,7 +62,7 @@
     <section class="message-container {(data.uid == $profile?.uid) ? "from-self": "from-other"}">
         <header>
             <span id="name">{data.name}</span>
-            <span id="uid">0x{data.uid.toString(16)}</span>
+            <span id="uid">{data.uid.toString(16)}</span>
         </header>
         <textarea id="message">{message}</textarea>
     </section>
