@@ -29,6 +29,7 @@
         bottom: 0;
         right: 0;
         left: 0;
-        background: var(--ctp-latte-overlay0);
+        background-color: var(--ctp-latte-overlay0);
+        opacity: 0.5;
     }
 </style>

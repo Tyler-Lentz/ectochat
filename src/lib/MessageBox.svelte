@@ -45,8 +45,25 @@
                 
     })
 
+    let hovering: boolean = false;
+    let timeout_code: number;
+    function hoverAcks() {
+        hovering = true;
+        timeout_code = setTimeout(() => {
+            // If still hovering in 500ms, then open the modal
+            if (hovering) {
+                openModal(Modal, {title: "Seen by", message: "Test message"})
+                hovering = false;
+            }
+        }, 1000)
+    }
+
+    function leaveHoverAcks() {
+        hovering = false;
+        clearTimeout(timeout_code);
+    }
+
     function clickAcks() {
-        openModal(Modal, {title: 'Test', message: "test message"});
     }
 
 </script>
@@ -74,6 +91,8 @@
          data-num-acks={acks.length} 
          data-acks={acks}
          on:click={clickAcks}
+         on:mouseover={hoverAcks}
+         on:mouseleave={leaveHoverAcks}
          >
         <img id="ack" src={EyeIcon} alt="Acks"/>
     </button>
@@ -166,7 +185,7 @@
         background-position: 100% 100%, 0 100%;
         background-repeat: no-repeat;
 
-        transition: background-size 400ms, top 0.25s ease-in-out;
+        transition: background-size 1s, top 0.25s ease-in-out;
 
         display: flex;
         flex-direction: row; /* make num appear to side */
