@@ -6,6 +6,8 @@
     import Canvas from '$lib/Canvas.svelte';
 	import { PROFILE_PIC_SIZE } from "$lib/contants";
 	import { onMount } from "svelte";
+    import { openModal } from 'svelte-modals';
+    import Modal from '$lib/Modal.svelte';
 
 
     let canvas: Canvas;
@@ -28,9 +30,11 @@
         // Pull out list of UIDS of users that have acked this Message
         // If User is in anonymous mode, it will be a string that says "Anonymous"
         // otherwise, it will be a hex string of the UID
+        // TODO: pull out acks in ChatScreen component, then pass down into individual
+        // MessageBoxes so that this computation isn't repeated for each message box 
         acks = new_hist
                 .reduce((acked_uids, current) => {
-                    if ("Ack" in current && current.Ack.mid == data.mid && current.Ack.uid != $profile?.uid) {
+                    if ("Ack" in current && current.Ack.mid == data.mid ) { //&& current.Ack.uid != $profile?.uid) {
                         if (current.Ack.uid == null) {
                             return acked_uids.concat("Anonymous");
                         } 
@@ -42,7 +46,7 @@
     })
 
     function clickAcks() {
-        alert(acks)
+        openModal(Modal, {title: 'Test', message: "test message"});
     }
 
 </script>
