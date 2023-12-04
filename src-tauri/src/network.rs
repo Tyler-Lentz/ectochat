@@ -1,4 +1,4 @@
-use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration, ffi::CStr, };
+use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration};
 use tauri::State;
 use crate::message::{Message, MessageData};
 use crate::profile::ProfileState;
@@ -6,8 +6,6 @@ use crate::utilities;
 
 const BROADCAST_ADDR: &str = "255.255.255.255";
 const BROADCAST_PORT: &str = "59813";
-
-const BUF_SIZE: usize = 1000;
 
 pub struct ConnectionState {
     socket: Arc<Mutex<UdpSocket>>,
@@ -31,14 +29,13 @@ impl ConnectionState {
             loop {
                 {
                     let socket = socket.lock().unwrap();
-                    let mut buf = [0; BUF_SIZE];
+                    let mut buf = [0; u16::MAX as usize];
                     match socket.recv_from(&mut buf) {
                         Ok((received, addr)) => {
                             println!("Received {received} bytes from {addr}");  
                             // TODO handle these errors!! VERY IMPORTANT!
                             // TODO add to message history
-                            let buf = CStr::from_bytes_until_nul(&buf).unwrap().to_bytes();
-                            let msg: Message = serde_json::from_slice(buf).unwrap();
+                            let msg = Message::from_compressed(&buf[0..received]);
                             let _ = window.emit("evt_new_msg", msg);
                         },
                         _ => (),
@@ -59,14 +56,13 @@ pub fn cmd_send_hello(conn: State<ConnectionState>, profile: State<ProfileState>
         profile.uid,
         utilities::gen_rand_id(),
         utilities::get_curr_time(),
-        "Hello World!".as_bytes().to_vec()
+        "Hello World!".as_bytes().to_vec(),
+        profile.pic.clone(),
     ));
-
-    let msg_json = serde_json::to_string(&hello_msg).unwrap();
 
     let socket = conn.socket.lock().unwrap();
     socket
-        .send_to(msg_json.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+        .send_to(&hello_msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
         .expect("Couldn't send msg");
 }
 
@@ -75,7 +71,6 @@ pub fn cmd_send_text(
     msg: &str,
     conn: State<ConnectionState>,
     profile: State<ProfileState>,
-    window: tauri::Window
 ) {
     let profile = profile.mtx.lock().unwrap();
 
@@ -85,14 +80,11 @@ pub fn cmd_send_text(
         utilities::gen_rand_id(),
         utilities::get_curr_time(),
         msg.as_bytes().to_vec(),
+        profile.pic.clone(),
     ));
-
-    let msg_json = serde_json::to_string(&msg).unwrap();
 
     let socket = conn.socket.lock().unwrap();
     socket
-        .send_to(msg_json.as_bytes(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+        .send_to(&msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
         .expect("Couldn't send msg");
-
-    // let _ = window.emit("evt_new_msg", msg);
 }

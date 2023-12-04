@@ -2,16 +2,29 @@
     import { invoke } from '@tauri-apps/api/tauri';
     import { profile } from '$lib/stores';
     import type { Profile } from '$lib/bindings/Profile';
+    import Canvas from '$lib/Canvas.svelte';
+    import { PROFILE_PIC_SIZE } from '$lib/contants';
 
     let entered_name: String;
+    let canvas: Canvas;
 
     function enterInfo() {
-        invoke('cmd_set_profile_name', {name: entered_name})
-            .then((resp: any) => {
+        if (entered_name.length == 0) {
+            // TODO: switch to in app modal
+            alert('You must enter in a name with length > 0');
+            return;
+        }
+
+        let profile_pic_data = (canvas.getImageData()?.data || []).toString();
+
+        invoke('cmd_personalize_new_profile', {newName: entered_name, newPic: profile_pic_data})
+            .then((r: any) => {
+                let resp = r as Profile;
                 $profile = {
                     name: resp.name,
                     uid: resp.uid,
                     join_time: resp.uid,
+                    pic: resp.pic,
                 } as Profile;
             })
             .catch(err => {
@@ -30,8 +43,18 @@
             bind:value={entered_name}
             />
 
+        Draw your avatar:
+        <Canvas
+            bind:this={canvas}
+            width={PROFILE_PIC_SIZE}
+            height={PROFILE_PIC_SIZE}
+            editable={true}
+            color={"black"}
+            />
+
         <input 
             type="submit"
+            value="Start Chatting"
             >
     </form>
 </div>
@@ -58,7 +81,7 @@
     }
 
 
-    input[type="text"] {
+    input:is([type="text"], [type="submit"]) {
         padding: 1rem;
         margin: 1rem;
         text-align: center;

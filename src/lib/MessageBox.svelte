@@ -2,9 +2,23 @@
     import type { MessageData } from "$lib/bindings/MessageData";
     import type { Message } from "$lib/bindings/Message";
     import { msg_history, profile } from "$lib/stores";
-    import WaveIcon from '$lib/icons/wave.svg';
+    import EyeIcon from '$lib/icons/eye.svg';
+    import Canvas from '$lib/Canvas.svelte';
+	import { PROFILE_PIC_SIZE } from "$lib/contants";
+	import { onMount } from "svelte";
 
+
+    let canvas: Canvas;
     export let data: MessageData;
+
+    onMount(() => {
+        let imageData = new ImageData(
+            new Uint8ClampedArray(data.pic),
+            PROFILE_PIC_SIZE, 
+            PROFILE_PIC_SIZE 
+        );
+        canvas.setImageData(imageData);
+    });
 
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
     const date = new Date(Number(data.timestamp) * 1000)
@@ -37,19 +51,27 @@
     <aside id="timestamp">
         {date.toLocaleTimeString()}
     </aside> 
+            <div class="canvas-container">
+                <Canvas 
+                    bind:this={canvas}
+                    width={PROFILE_PIC_SIZE}
+                    height={PROFILE_PIC_SIZE}
+                    editable={false}
+                    />
+            </div>
     <section class="message-container {(data.uid == $profile?.uid) ? "from-self": "from-other"}">
         <header>
             <span id="name">{data.name}</span>
             <span id="uid">0x{data.uid.toString(16)}</span>
         </header>
-        <span id="message">{message}</span>
+        <textarea id="message">{message}</textarea>
     </section>
     <button class="ack-container" 
          data-num-acks={acks.length} 
          data-acks={acks}
          on:click={clickAcks}
          >
-        <img id="ack" src={WaveIcon} alt="Acks"/>
+        <img id="ack" src={EyeIcon} alt="Acks"/>
     </button>
 </article>
 
@@ -67,6 +89,7 @@
     .message-container {
         border-radius: 4px;
         padding: 1rem;
+        padding-bottom: 0;
         margin: 1rem;
         width: 60ch;
         background-color: var(--ctp-latte-mantle);
@@ -111,11 +134,25 @@
         padding-top: 1rem;
         text-align: left;
         display: inline-block;
+
+        background-color: inherit;
+        border: none;
+        outline: 0;
+        width: 100%;
+        min-height: 1ch;
+        max-height: 8ch;
+        resize: none;
+    }
+
+    .canvas-container {
+        align-self: flex-start;
+        scale: 0.75;
+        margin-top: 1.5em;
     }
 
     .ack-container {
         position: relative;
-        right: 0;
+        top: 0;
 
         /* set up underline transition*/
         background: 
@@ -125,11 +162,14 @@
         background-position: 100% 100%, 0 100%;
         background-repeat: no-repeat;
 
-        transition: background-size 400ms, right 0.25s ease-in-out;
+        transition: background-size 400ms, top 0.25s ease-in-out;
+
+        display: flex;
+        flex-direction: row; /* make num appear to side */
     }
 
     .ack-container:hover {
-        right: -0.33em;
+        top: -0.33em;
         background-size: 0 0.1em, 100% 0.1em;
 
     }
@@ -139,6 +179,7 @@
         color: var(--ctp-latte-blue);
         right: -0.2ch;
         content: attr(data-num-acks);
+        text-align: center;
     }
 
     .ack-container #ack {
@@ -146,21 +187,4 @@
         filter: invert(39%) sepia(94%) saturate(4642%) hue-rotate(214deg) brightness(96%) contrast(100%);
     }
 
-    .ack-container:hover #ack {
-        animation-name: wave-animation;
-        animation-duration: 2.5s; 
-        transform-origin: 50% 80%;
-    }
-
-    @keyframes wave-animation {
-        /* https://codepen.io/jakejarvis/pen/pBZWZw */
-        0% { transform: rotate( 0.0deg) }
-        10% { transform: rotate(14.0deg) }  /* The following five values can be played with to make the waving more or less extreme */
-        20% { transform: rotate(-8.0deg) }
-        30% { transform: rotate(14.0deg) }
-        40% { transform: rotate(-4.0deg) }
-        50% { transform: rotate(10.0deg) }
-        60% { transform: rotate( 0.0deg) }  /* Reset for the last half to pause */
-        100% { transform: rotate( 0.0deg) }
-    }
 </style>
