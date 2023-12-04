@@ -8,6 +8,7 @@
 	import { onMount } from "svelte";
     import { openModal, closeModal } from 'svelte-modals';
     import Modal from '$lib/Modal.svelte';
+	import { writable, type Writable } from "svelte/store";
 
 
     let canvas: Canvas;
@@ -47,22 +48,22 @@
 
     let hovering: boolean = false;
     let timeout_code: number;
+    let startClose: Writable<boolean> = writable(false);
     function hoverAcks() {
         hovering = true;
         timeout_code = setTimeout(() => {
             // If still hovering in 500ms, then open the modal
             if (hovering) {
-                openModal(Modal, {title: "Seen by", message: "Test message"})
+                openModal(Modal, {title: "Seen by", message: "Test message", startClose})
                 hovering = false;
             }
         }, 1000)
     }
 
     function leaveHoverAcks() {
-        console.log("LEAAVE")
         hovering = false;
         clearTimeout(timeout_code);
-        closeModal()
+        startClose.set(true);
     }
 
 </script>
