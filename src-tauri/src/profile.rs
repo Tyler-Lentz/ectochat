@@ -58,7 +58,7 @@ pub fn cmd_personalize_new_profile(
         })
         .collect();
 
-    conn.start_listen(window);
+    conn.start_listen(window, profile.uid);
 
     profile.clone()
 }

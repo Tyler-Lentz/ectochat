@@ -38,12 +38,12 @@ impl Message {
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct MessageData {
-    name: String,
-    uid: u64,
-    mid: u64,
-    timestamp: u64,
-    payload: Vec<u8>,
-    pic: Vec<u8>,
+    pub name: String,
+    pub uid: u64,
+    pub mid: u64,
+    pub timestamp: u64,
+    pub payload: Vec<u8>,
+    pub pic: Vec<u8>,
 }
 
 impl MessageData {

@@ -1,4 +1,4 @@
-use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration};
+use std::{net::UdpSocket, sync::{Mutex, Arc, MutexGuard}, thread, time::Duration};
 use tauri::State;
 use crate::message::{Message, MessageData};
 use crate::profile::ProfileState;
@@ -22,7 +22,8 @@ impl ConnectionState {
         }
     }
 
-    pub fn start_listen(&self, window: tauri::Window) {
+
+    pub fn start_listen(&self, window: tauri::Window, uid: u64) {
         let socket = self.socket.clone();
 
         thread::spawn(move || {
@@ -35,8 +36,30 @@ impl ConnectionState {
                             println!("Received {received} bytes from {addr}");  
                             // TODO handle these errors!! VERY IMPORTANT!
                             // TODO add to message history
-                            let msg = Message::from_compressed(&buf[0..received]);
-                            let _ = window.emit("evt_new_msg", msg);
+                            let rec_msg = Message::from_compressed(&buf[0..received]);
+
+                            match &rec_msg {
+                                Message::Ack{mid: _, uid: _} => {
+                                    // Do nothing, dont want to Ack acks b/c that would
+                                    // create infinite loops of packets
+                                },
+                                Message::Hello(data) |
+                                Message::Text(data)  |
+                                Message::Image(data) => {
+                                    // Send back Ack
+                                    let ack_msg = Message::Ack{
+                                        uid: Some(uid),
+                                        mid: data.mid,
+                                    };
+
+                                    socket.send_to(
+                                        &ack_msg.compress(),
+                                        format!("{BROADCAST_ADDR}:{BROADCAST_PORT}")
+                                    ).expect("couldn't send ack");
+                                }
+                            }
+
+                            let _ = window.emit("evt_new_msg", rec_msg);
                         },
                         _ => (),
                     }
