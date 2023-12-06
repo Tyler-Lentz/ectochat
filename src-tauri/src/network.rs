@@ -1,6 +1,6 @@
-use std::{net::UdpSocket, sync::{Mutex, Arc, MutexGuard}, thread, time::Duration};
+use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration};
 use tauri::State;
-use crate::message::{Message, MessageData};
+use crate::{message::{Message, MessageData, MessageHistory}, utilities::KnownUsersState};
 use crate::profile::ProfileState;
 use crate::utilities;
 
@@ -23,10 +23,19 @@ impl ConnectionState {
     }
 
 
-    pub fn start_listen(&self, window: tauri::Window, uid: u64) {
+    pub fn start_listen(
+        &self,
+        window: tauri::Window,
+        uid: u64,
+        history: State<MessageHistory>,
+        known_users: State<KnownUsersState>,
+    ) {
         let socket = self.socket.clone();
+        let history = history.msgs.clone();
+        let user_map = known_users.map.clone();
 
         thread::spawn(move || {
+
             loop {
                 {
                     let socket = socket.lock().unwrap();
@@ -37,6 +46,11 @@ impl ConnectionState {
                             // TODO handle these errors!! VERY IMPORTANT!
                             // TODO add to message history
                             let rec_msg = Message::from_compressed(&buf[0..received]);
+
+                            {
+                                let mut history = history.lock().unwrap();
+                                history.push(rec_msg.clone());
+                            }
 
                             match &rec_msg {
                                 Message::Ack{mid: _, uid: _} => {
@@ -56,6 +70,11 @@ impl ConnectionState {
                                         &ack_msg.compress(),
                                         format!("{BROADCAST_ADDR}:{BROADCAST_PORT}")
                                     ).expect("couldn't send ack");
+
+                                    // Also store the name in the uid_to_name map
+                                    // for future lookups from the frontend
+                                    let mut user_map = user_map.lock().unwrap();
+                                    user_map.uid_to_name.insert(data.uid, data.name.clone());
                                 }
                             }
 

@@ -26,7 +26,7 @@
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
     const date = new Date(Number(data.timestamp) * 1000)
 
-    let acks: string[];
+    let acks: (bigint | null)[];
     msg_history.subscribe((new_hist) => {
         // Pull out list of UIDS of users that have acked this Message
         // If User is in anonymous mode, it will be a string that says "Anonymous"
@@ -37,13 +37,12 @@
                 .reduce((acked_uids, current) => {
                     if ("Ack" in current && current.Ack.mid == data.mid ) { //&& current.Ack.uid != $profile?.uid) {
                         if (current.Ack.uid == null) {
-                            return acked_uids.concat("Anonymous");
+                            return acked_uids.concat(null);
                         } 
-                        return acked_uids.concat(current.Ack.uid.toString(16));
+                        return acked_uids.concat(current.Ack.uid);
                     }
                     return acked_uids;
-                }, <string[]>[])
-                
+                }, <(bigint | null)[]>[])
     })
 
     let hovering: boolean = false;
@@ -54,10 +53,10 @@
         timeout_code = setTimeout(() => {
             // If still hovering in 500ms, then open the modal
             if (hovering) {
-                openModal(Modal, {title: "Seen by", message: "Test message", startClose})
+                openModal(Modal, {title: "Seen by", message: acks.join('\n'), startClose})
                 hovering = false;
             }
-        }, 1000)
+        }, 500)
     }
 
     function leaveHoverAcks() {
@@ -182,7 +181,7 @@
         background-repeat: no-repeat;
         z-index: 100; /* so that when modal covers screen mouseleave event still tracks this element */
 
-        transition: background-size 1s;
+        transition: background-size 500ms;
 
         display: flex;
         flex-direction: row; /* make num appear to side */

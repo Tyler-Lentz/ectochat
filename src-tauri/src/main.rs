@@ -12,10 +12,12 @@ fn main() {
             profile::cmd_personalize_new_profile,
             network::cmd_send_hello,
             network::cmd_send_text,
+            utilities::cmd_get_known_users,
         ])
         .manage(message::MessageHistory::new())
         .manage(profile::ProfileState::new())
         .manage(network::ConnectionState::new())
+        .manage(utilities::KnownUsersState::new())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

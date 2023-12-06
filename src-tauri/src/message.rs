@@ -53,7 +53,7 @@ impl MessageData {
 }
 
 pub struct MessageHistory {
-    msgs: Arc<Mutex<Vec<Message>>>,
+    pub msgs: Arc<Mutex<Vec<Message>>>,
 }
 
 impl MessageHistory {

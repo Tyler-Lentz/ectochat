@@ -25,7 +25,9 @@
     }
 
     appWindow.listen("evt_new_msg", (e) => {
-        msg_history.update(hist => [...hist, e.payload as Message]);
+        let msg = e.payload as Message;
+
+        msg_history.update(hist => [...hist, msg]);
 
         let scrolled_to_bottom = rec_messages.scrollTop + rec_messages.clientHeight >= rec_messages.scrollHeight;
         let from_self = getMsgUid($msg_history.at(-1)) == $profile?.uid;
