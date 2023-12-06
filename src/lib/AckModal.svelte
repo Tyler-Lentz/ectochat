@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
     // Slightly modified from svelte-modal documentation here:
     // https://www.npmjs.com/package/svelte-modals
 
@@ -11,7 +12,7 @@
     export let isOpen: boolean;
 
     export let title: string;
-    export let message: string;
+    export let message: string[];
 
     export let startClose: Writable<boolean>;
 
@@ -25,13 +26,25 @@
         } 
     });
 
+    const PIXELS_PER_NAME = 60;
+    let modal_height: number = 180 + (message.length * PIXELS_PER_NAME);
+
+    onMount(() => {
+        let num_users = Math.floor(Math.random() * 10);
+        message = new Array(num_users);
+        for (let i = 0; i < num_users; i++) {
+            message[i] = "Testlx";
+        }
+        console.log(message);
+    });
+
 </script>
 
 {#if isOpen}
-<div role="dialog" class="modal">
+<div role="dialog" class="modal" style="--modal-height: {modal_height}px;">
     <div bind:this={contents} class="contents" data-open={isOpen} data-close={$startClose}>
         <h2>{title}</h2>
-        <p>{message}</p>
+        <pre>{message.join('\n')}</pre>
         <div class="actions">
             <button on:click="{closeModal}">OK</button>
         </div>
@@ -70,7 +83,7 @@
         animation-iteration-count: 1;
         animation-duration: 0.5s;
         animation-timing-function: cubic-bezier(0.645, 0.045, 0.355, 1.000);
-        height: 200px;
+        height: var(--modal-height);
     }
     
     .contents[data-open="true"] > * {
@@ -130,17 +143,17 @@
         }
 
         100% {
-            height: 200px;
+            height: var(--modal-height);
         }
     }
 
     @keyframes slideClosed {
         0% {
-            height: 200px;
+            height: var(--modal-height);
         }
 
         5% {
-            height: 200px
+            height: var(--modal-height);
         }
 
         100% {
@@ -153,7 +166,7 @@
         font-size: 24px;
     }
 
-    p {
+    pre {
         text-align: center;
         margin-top: 16px;
     }

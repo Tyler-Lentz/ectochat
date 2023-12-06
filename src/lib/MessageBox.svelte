@@ -7,7 +7,7 @@
 	import { PROFILE_PIC_SIZE } from "$lib/contants";
 	import { onMount } from "svelte";
     import { openModal, closeModal } from 'svelte-modals';
-    import Modal from '$lib/Modal.svelte';
+    import AckModal from '$lib/AckModal.svelte';
 	import { writable, type Writable } from "svelte/store";
 	import { invoke } from "@tauri-apps/api";
 	import type { KnownUsers } from "$lib/bindings/KnownUsers";
@@ -62,7 +62,7 @@
         timeout_code = setTimeout(() => {
             // If still hovering in 250ms, then open the modal
             if (hovering) {
-                openModal(Modal, {title: "Seen by", message: acks.join('\n'), startClose})
+                openModal(AckModal, {title: "Seen by", message: acks, startClose})
                 hovering = false;
             }
         }, 250)
