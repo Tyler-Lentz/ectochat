@@ -22,11 +22,10 @@ impl ConnectionState {
         }
     }
 
-
     pub fn start_listen(
         &self,
         window: tauri::Window,
-        uid: u64,
+        uid: u32,
         history: State<MessageHistory>,
         known_users: State<KnownUsersState>,
     ) {
@@ -78,7 +77,10 @@ impl ConnectionState {
                                 }
                             }
 
-                            let _ = window.emit("evt_new_msg", rec_msg);
+                            let res = window.emit("evt_new_msg", rec_msg);
+                            if let Err(e) = res {
+                                println!("evt_new_msg err {e:#?}");
+                            }
                         },
                         _ => (),
                     }

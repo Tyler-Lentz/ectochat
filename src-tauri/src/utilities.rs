@@ -3,7 +3,7 @@ use tauri::State;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
-pub fn gen_rand_id() -> u64 {
+pub fn gen_rand_id() -> u32 {
     rand::random()
 }
 
@@ -18,7 +18,7 @@ pub fn get_curr_time() -> u64 {
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct KnownUsers {
-    pub uid_to_name: HashMap<u64, String>,
+    pub uid_to_name: HashMap<u32, String>,
 }
 
 impl KnownUsers {

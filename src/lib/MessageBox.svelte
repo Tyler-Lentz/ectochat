@@ -9,6 +9,8 @@
     import { openModal, closeModal } from 'svelte-modals';
     import Modal from '$lib/Modal.svelte';
 	import { writable, type Writable } from "svelte/store";
+	import { invoke } from "@tauri-apps/api";
+	import type { KnownUsers } from "$lib/bindings/KnownUsers";
 
 
     let canvas: Canvas;
@@ -26,23 +28,30 @@
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
     const date = new Date(Number(data.timestamp) * 1000)
 
-    let acks: (bigint | null)[];
+    let acks: string[] = [];
     msg_history.subscribe((new_hist) => {
         // Pull out list of UIDS of users that have acked this Message
         // If User is in anonymous mode, it will be a string that says "Anonymous"
         // otherwise, it will be a hex string of the UID
         // TODO: pull out acks in ChatScreen component, then pass down into individual
         // MessageBoxes so that this computation isn't repeated for each message box 
-        acks = new_hist
-                .reduce((acked_uids, current) => {
-                    if ("Ack" in current && current.Ack.mid == data.mid ) { //&& current.Ack.uid != $profile?.uid) {
-                        if (current.Ack.uid == null) {
-                            return acked_uids.concat(null);
-                        } 
-                        return acked_uids.concat(current.Ack.uid);
-                    }
-                    return acked_uids;
-                }, <(bigint | null)[]>[])
+        invoke("cmd_get_known_users")
+            .then((payload: any) => {
+                let known_users = payload as KnownUsers;
+
+                acks = new_hist
+                        .reduce((acked_uids, current) => {
+                            if ("Ack" in current && current.Ack.mid == data.mid ) { //&& current.Ack.uid != $profile?.uid) {
+                                if (current.Ack.uid == null) {
+                                    return acked_uids.concat("Anonymous");
+                                } 
+                                const name = known_users.uid_to_name[current.Ack.uid];
+                                return acked_uids.concat(name);
+                            }
+                            return acked_uids;
+                        }, <(string)[]>[]);
+            });
+        
     })
 
     let hovering: boolean = false;
@@ -51,12 +60,12 @@
     function hoverAcks() {
         hovering = true;
         timeout_code = setTimeout(() => {
-            // If still hovering in 500ms, then open the modal
+            // If still hovering in 250ms, then open the modal
             if (hovering) {
                 openModal(Modal, {title: "Seen by", message: acks.join('\n'), startClose})
                 hovering = false;
             }
-        }, 500)
+        }, 250)
     }
 
     function leaveHoverAcks() {
@@ -181,7 +190,7 @@
         background-repeat: no-repeat;
         z-index: 100; /* so that when modal covers screen mouseleave event still tracks this element */
 
-        transition: background-size 500ms;
+        transition: background-size 250ms;
 
         display: flex;
         flex-direction: row; /* make num appear to side */

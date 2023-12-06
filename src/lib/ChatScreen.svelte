@@ -26,8 +26,11 @@
 
     appWindow.listen("evt_new_msg", (e) => {
         let msg = e.payload as Message;
+        console.log("evt new msg", msg)
 
-        msg_history.update(hist => [...hist, msg]);
+        msg_history.update(hist => {
+            return [...hist, msg];
+        });
 
         let scrolled_to_bottom = rec_messages.scrollTop + rec_messages.clientHeight >= rec_messages.scrollHeight;
         let from_self = getMsgUid($msg_history.at(-1)) == $profile?.uid;
@@ -37,6 +40,7 @@
                 rec_messages.scrollTo({top: rec_messages.scrollHeight, behavior: "smooth"});
             }, 0)
         }
+
     });
 
 </script>

@@ -14,7 +14,7 @@ pub enum Message {
     Text(MessageData), 
     Image(MessageData),
     Hello(MessageData),
-    Ack{mid: u64, uid: Option<u64>},
+    Ack{mid: u32, uid: Option<u32>},
 }
 
 impl Message {
@@ -39,15 +39,15 @@ impl Message {
 #[ts(export_to="../src/lib/bindings/")]
 pub struct MessageData {
     pub name: String,
-    pub uid: u64,
-    pub mid: u64,
+    pub uid: u32,
+    pub mid: u32,
     pub timestamp: u64,
     pub payload: Vec<u8>,
     pub pic: Vec<u8>,
 }
 
 impl MessageData {
-    pub fn new(name: String, uid: u64, mid: u64, timestamp: u64, payload: Vec<u8>, pic: Vec<u8>) -> MessageData {
+    pub fn new(name: String, uid: u32, mid: u32, timestamp: u64, payload: Vec<u8>, pic: Vec<u8>) -> MessageData {
         MessageData { name, uid, mid, timestamp, payload, pic }
     }
 }

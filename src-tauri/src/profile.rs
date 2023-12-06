@@ -12,7 +12,7 @@ use crate::message::MessageHistory;
 #[ts(export_to="../src/lib/bindings/")]
 pub struct Profile {
     pub name: String,
-    pub uid: u64,
+    pub uid: u32,
     pub join_time: u64,
     pub pic: Vec<u8>,
 }
