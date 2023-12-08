@@ -1,10 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
     // Slightly modified from svelte-modal documentation here:
     // https://www.npmjs.com/package/svelte-modals
-
-    // TODO: rename to AckModal.svelte
-    // and pass in ack information
 
     import { closeModal } from 'svelte-modals'
 	import type { Writable } from 'svelte/store';

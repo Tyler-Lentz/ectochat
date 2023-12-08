@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { MessageData } from "$lib/bindings/MessageData";
-    import { modal_closed, msg_history, profile } from "$lib/stores";
+    import { modal_closed, profile } from "$lib/stores";
     import EyeIcon from '$lib/icons/eye.svg';
     import Canvas from '$lib/Canvas.svelte';
 	import { PROFILE_PIC_SIZE } from "$lib/contants";
@@ -8,8 +8,6 @@
     import { openModal } from 'svelte-modals';
     import AckModal from '$lib/AckModal.svelte';
 	import { writable, type Writable } from "svelte/store";
-	import { invoke } from "@tauri-apps/api";
-	import type { KnownUsers } from "$lib/bindings/KnownUsers";
 
 
     let canvas: Canvas;
@@ -107,6 +105,7 @@
          data-num-acks={acks.length} 
          data-acks={acks}
          data-clicked={clicked}
+         data-opened={opened}
          on:click={handleAckClick}
          on:mouseenter={hoverAcks}
          on:mouseleave={leaveHoverAcks}
@@ -195,13 +194,14 @@
         outline: none;
         display: flex;
         flex-direction: row; /* make num appear to side */
+        padding-right: 1em;
     }
 
     .ack-container:not([data-clicked="true"]) {
         /* set up underline transition*/
         transition: background-size 250ms;
         background: 
-            linear-gradient(to right, var(--ctp-latte-base), var(--ctp-latte-base)),
+            linear-gradient(to right, transparent, transparent),
             linear-gradient(to right, var(--ctp-latte-blue), var(--ctp-latte-blue));
         background-size: 100% 0.1em, 0 0.1em;
         background-position: 100% 100%, 0 100%;
