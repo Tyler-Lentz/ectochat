@@ -50,7 +50,7 @@
     <div id="message-container">
         <header>
             <span id="name">{$profile?.name}</span>
-            <span id="uid">0x{$profile?.uid.toString(16)}</span>
+            <span id="uid">{$profile?.uid.toString(16)}</span>
         </header>
         <textarea 
             wrap="soft"

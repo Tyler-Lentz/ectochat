@@ -1,6 +1,6 @@
 use std::{net::UdpSocket, sync::{Mutex, Arc}, thread, time::Duration};
 use tauri::State;
-use crate::message::{Message, MessageData};
+use crate::{message::{Message, MessageData, MessageHistory}, utilities::KnownUsersState};
 use crate::profile::ProfileState;
 use crate::utilities;
 
@@ -22,8 +22,17 @@ impl ConnectionState {
         }
     }
 
-    pub fn start_listen(&self, window: tauri::Window) {
+    pub fn start_listen(
+        &self,
+        window: tauri::Window,
+        uid: u32,
+        history: State<MessageHistory>,
+        known_users: State<KnownUsersState>,
+    ) {
         let socket = self.socket.clone();
+        let msgs_state = history.msgs.clone();
+        let ids_state = history.ids.clone();
+        let user_map = known_users.map.clone();
 
         thread::spawn(move || {
             loop {
@@ -34,9 +43,66 @@ impl ConnectionState {
                         Ok((received, addr)) => {
                             println!("Received {received} bytes from {addr}");  
                             // TODO handle these errors!! VERY IMPORTANT!
-                            // TODO add to message history
-                            let msg = Message::from_compressed(&buf[0..received]);
-                            let _ = window.emit("evt_new_msg", msg);
+                            let rec_msg = Message::from_compressed(&buf[0..received]);
+
+                            let id_pair: (u32, u32) = match &rec_msg {
+                                Message::Ack{mid, uid} => (*mid, match uid {
+                                    Some(uid) => *uid,
+                                    None => 0,
+                                }),
+                                Message::Hello(data) |
+                                Message::Text(data) |
+                                Message::Image(data) => (data.mid, data.uid),
+                            };
+
+                            {
+                                let mut ids_state = ids_state.lock().unwrap();
+                                if ids_state.contains(&id_pair) {
+                                    println!("Already received msg, dropping");
+                                    continue
+                                } else {
+                                    ids_state.insert(id_pair);
+                                }
+                            }
+
+                            {
+                                let mut msgs_state = msgs_state.lock().unwrap();
+                                msgs_state.push(rec_msg.clone());
+                            }
+
+                            match &rec_msg {
+                                Message::Ack{mid: _, uid: _} => {
+                                    // Do nothing, dont want to Ack acks b/c that would
+                                    // create infinite loops of packets
+                                },
+                                Message::Hello(data) |
+                                Message::Text(data)  |
+                                Message::Image(data) => {
+                                    // If from self, don't ACK
+                                    if data.uid != uid {
+                                        // Send back Ack
+                                        let ack_msg = Message::Ack{
+                                            uid: Some(uid),
+                                            mid: data.mid,
+                                        };
+
+                                        socket.send_to(
+                                            &ack_msg.compress(),
+                                            format!("{BROADCAST_ADDR}:{BROADCAST_PORT}")
+                                        ).expect("couldn't send ack");
+                                    }
+
+                                    // Also store the name in the uid_to_name map
+                                    // for future lookups from the frontend
+                                    let mut user_map = user_map.lock().unwrap();
+                                    user_map.uid_to_name.insert(data.uid, data.name.clone());
+                                }
+                            }
+
+                            let res = window.emit("evt_new_msg", rec_msg);
+                            if let Err(e) = res {
+                                println!("evt_new_msg err {e:#?}");
+                            }
                         },
                         _ => (),
                     }
@@ -61,9 +127,11 @@ pub fn cmd_send_hello(conn: State<ConnectionState>, profile: State<ProfileState>
     ));
 
     let socket = conn.socket.lock().unwrap();
-    socket
-        .send_to(&hello_msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
-        .expect("Couldn't send msg");
+    for _ in 0..3 {
+        socket
+            .send_to(&hello_msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+            .expect("Couldn't send msg");
+    }
 }
 
 #[tauri::command]
@@ -84,7 +152,10 @@ pub fn cmd_send_text(
     ));
 
     let socket = conn.socket.lock().unwrap();
-    socket
-        .send_to(&msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
-        .expect("Couldn't send msg");
+
+    for _ in 0..3 {
+        socket
+            .send_to(&msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+            .expect("Couldn't send msg");
+    }
 }

@@ -23,7 +23,7 @@
                 $profile = {
                     name: resp.name,
                     uid: resp.uid,
-                    join_time: resp.uid,
+                    join_time: resp.join_time,
                     pic: resp.pic,
                 } as Profile;
             })
@@ -49,7 +49,6 @@
             width={PROFILE_PIC_SIZE}
             height={PROFILE_PIC_SIZE}
             editable={true}
-            color={"black"}
             />
 
         <input 

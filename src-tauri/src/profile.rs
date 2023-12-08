@@ -4,14 +4,15 @@ use ts_rs::TS;
 use tauri::State;
 
 use crate::network::ConnectionState;
-use crate::utilities;
+use crate::utilities::{self, KnownUsersState};
+use crate::message::MessageHistory;
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct Profile {
     pub name: String,
-    pub uid: u64,
+    pub uid: u32,
     pub join_time: u64,
     pub pic: Vec<u8>,
 }
@@ -39,6 +40,8 @@ pub fn cmd_personalize_new_profile(
     new_pic: &str, 
     profile: State<ProfileState>, 
     conn: State<ConnectionState>,
+    msg_history: State<MessageHistory>,
+    known_users: State<KnownUsersState>,
     window: tauri::Window,
 ) -> Profile {
     // Update the profile with the profile options the user is allowed
@@ -58,7 +61,7 @@ pub fn cmd_personalize_new_profile(
         })
         .collect();
 
-    conn.start_listen(window);
+    conn.start_listen(window, profile.uid, msg_history, known_users);
 
     profile.clone()
 }
