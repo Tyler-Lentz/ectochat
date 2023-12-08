@@ -30,11 +30,11 @@ impl ConnectionState {
         known_users: State<KnownUsersState>,
     ) {
         let socket = self.socket.clone();
-        let history = history.msgs.clone();
+        let msgs_state = history.msgs.clone();
+        let ids_state = history.ids.clone();
         let user_map = known_users.map.clone();
 
         thread::spawn(move || {
-
             loop {
                 {
                     let socket = socket.lock().unwrap();
@@ -43,12 +43,31 @@ impl ConnectionState {
                         Ok((received, addr)) => {
                             println!("Received {received} bytes from {addr}");  
                             // TODO handle these errors!! VERY IMPORTANT!
-                            // TODO add to message history
                             let rec_msg = Message::from_compressed(&buf[0..received]);
 
+                            let id_pair: (u32, u32) = match &rec_msg {
+                                Message::Ack{mid, uid} => (*mid, match uid {
+                                    Some(uid) => *uid,
+                                    None => 0,
+                                }),
+                                Message::Hello(data) |
+                                Message::Text(data) |
+                                Message::Image(data) => (data.mid, data.uid),
+                            };
+
                             {
-                                let mut history = history.lock().unwrap();
-                                history.push(rec_msg.clone());
+                                let mut ids_state = ids_state.lock().unwrap();
+                                if ids_state.contains(&id_pair) {
+                                    println!("Already received msg, dropping");
+                                    continue
+                                } else {
+                                    ids_state.insert(id_pair);
+                                }
+                            }
+
+                            {
+                                let mut msgs_state = msgs_state.lock().unwrap();
+                                msgs_state.push(rec_msg.clone());
                             }
 
                             match &rec_msg {
@@ -108,9 +127,11 @@ pub fn cmd_send_hello(conn: State<ConnectionState>, profile: State<ProfileState>
     ));
 
     let socket = conn.socket.lock().unwrap();
-    socket
-        .send_to(&hello_msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
-        .expect("Couldn't send msg");
+    for _ in 0..3 {
+        socket
+            .send_to(&hello_msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+            .expect("Couldn't send msg");
+    }
 }
 
 #[tauri::command]
@@ -131,7 +152,10 @@ pub fn cmd_send_text(
     ));
 
     let socket = conn.socket.lock().unwrap();
-    socket
-        .send_to(&msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
-        .expect("Couldn't send msg");
+
+    for _ in 0..3 {
+        socket
+            .send_to(&msg.compress()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+            .expect("Couldn't send msg");
+    }
 }

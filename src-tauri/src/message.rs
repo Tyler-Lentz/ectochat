@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::sync::{Arc, Mutex};
+use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 use std::io::prelude::*;
@@ -54,10 +55,23 @@ impl MessageData {
 
 pub struct MessageHistory {
     pub msgs: Arc<Mutex<Vec<Message>>>,
+
+    /*
+        Hashset of all the ids received
+        an entry of (mid, uid) means that 
+        mid has already been received from uid.
+
+        Text/Image/Hello msgs are literally uid send mid
+        Acks are 1:1 with how the uids/mids are sent in the ack
+     */
+    pub ids: Arc<Mutex<HashSet<(u32, u32)>>>,
 }
 
 impl MessageHistory {
     pub fn new() -> MessageHistory {
-        MessageHistory {msgs: Arc::new(Mutex::new(Vec::new()))}
+        MessageHistory {
+            msgs: Arc::new(Mutex::new(Vec::new())),
+            ids: Arc::new(Mutex::new(HashSet::new())),
+        }
     }
 }
