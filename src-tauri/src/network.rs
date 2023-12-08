@@ -59,16 +59,19 @@ impl ConnectionState {
                                 Message::Hello(data) |
                                 Message::Text(data)  |
                                 Message::Image(data) => {
-                                    // Send back Ack
-                                    let ack_msg = Message::Ack{
-                                        uid: Some(uid),
-                                        mid: data.mid,
-                                    };
+                                    // If from self, don't ACK
+                                    if data.uid != uid {
+                                        // Send back Ack
+                                        let ack_msg = Message::Ack{
+                                            uid: Some(uid),
+                                            mid: data.mid,
+                                        };
 
-                                    socket.send_to(
-                                        &ack_msg.compress(),
-                                        format!("{BROADCAST_ADDR}:{BROADCAST_PORT}")
-                                    ).expect("couldn't send ack");
+                                        socket.send_to(
+                                            &ack_msg.compress(),
+                                            format!("{BROADCAST_ADDR}:{BROADCAST_PORT}")
+                                        ).expect("couldn't send ack");
+                                    }
 
                                     // Also store the name in the uid_to_name map
                                     // for future lookups from the frontend
