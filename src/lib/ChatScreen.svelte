@@ -27,7 +27,6 @@
 
     appWindow.listen("evt_new_msg", (e) => {
         let msg = e.payload as Message;
-        console.log("evt new msg", msg)
 
         msg_history.update(hist => {
             return [...hist, msg];
