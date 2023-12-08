@@ -11,12 +11,10 @@
 
     export let isOpen: boolean;
 
-    export let title: string;
-    export let message: string[];
+    export let message: [string,string][];
 
     export let startClose: Writable<boolean>;
 
-    let contents: HTMLDivElement;
     startClose.subscribe((new_val) => {
         if (new_val) {
             setTimeout(() => {
@@ -26,28 +24,41 @@
         } 
     });
 
-    const PIXELS_PER_NAME = 60;
-    let modal_height: number = 180 + (message.length * PIXELS_PER_NAME);
+    let PIXELS_PER_ROW = 27;
+    let modal_height: number = 100 + (PIXELS_PER_ROW * message.length);
 
     onMount(() => {
-        let num_users = Math.floor(Math.random() * 10);
-        message = new Array(num_users);
-        for (let i = 0; i < num_users; i++) {
-            message[i] = "Testlx";
-        }
-        console.log(message);
-    });
+        // let num_users = Math.floor(Math.random() * 10);
+        let num_users = 20;
 
+        message = new Array(num_users);
+        modal_height = 100 + (PIXELS_PER_ROW * message.length);
+        for (let i = 0; i < num_users; i++) {
+            message[i] = ["Testlx", Math.floor(Math.random() * 1000000).toString(16)];
+        }
+    });
 </script>
 
 {#if isOpen}
 <div role="dialog" class="modal" style="--modal-height: {modal_height}px;">
-    <div bind:this={contents} class="contents" data-open={isOpen} data-close={$startClose}>
-        <h2>{title}</h2>
-        <pre>{message.join('\n')}</pre>
-        <div class="actions">
-            <button on:click="{closeModal}">OK</button>
-        </div>
+    <div class="contents" data-open={isOpen} data-close={$startClose}>
+        <h2>Seen By</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>UID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each message as ack}
+                    <tr>
+                        <td>{ack[0]}</td>
+                        <td>{ack[1]}</td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
     </div>
 </div>
 {/if}
@@ -67,10 +78,17 @@
         pointer-events: none;
     }
 
+    .contents::-webkit-scrollbar {
+        display: none;
+    }
+
     .contents {
+        overflow-y: scroll;
         min-width: 240px;
+        max-height: 80vh;
         border-radius: 6px;
         padding: 16px;
+        padding-top: 0px;
         background: white;
         display: flex;
         flex-direction: column;
@@ -107,6 +125,19 @@
         animation-duration: 0.5s;
         animation-timing-function: linear;
         opacity: 0;
+    }
+
+    table {
+        text-align: center;
+        border-collapse: collapse;
+    }
+
+    tr {
+        border: 1px solid var(--ctp-latte-overlay0);
+    }
+
+    th {
+        color: var(--ctp-latte-blue);
     }
 
     @keyframes appearAtEnd {
@@ -164,20 +195,5 @@
     h2 {
         text-align: center;
         font-size: 24px;
-    }
-
-    pre {
-        text-align: center;
-        margin-top: 16px;
-    }
-
-    .actions {
-        margin-top: 32px;
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .actions > button:hover {
-        background-color: var(--ctp-latte-rosewater);
     }
 </style>
