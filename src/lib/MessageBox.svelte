@@ -1,12 +1,11 @@
 <script lang="ts">
     import type { MessageData } from "$lib/bindings/MessageData";
-    import type { Message } from "$lib/bindings/Message";
     import { modal_closed, msg_history, profile } from "$lib/stores";
     import EyeIcon from '$lib/icons/eye.svg';
     import Canvas from '$lib/Canvas.svelte';
 	import { PROFILE_PIC_SIZE } from "$lib/contants";
 	import { onMount } from "svelte";
-    import { openModal, closeModal } from 'svelte-modals';
+    import { openModal } from 'svelte-modals';
     import AckModal from '$lib/AckModal.svelte';
 	import { writable, type Writable } from "svelte/store";
 	import { invoke } from "@tauri-apps/api";
@@ -28,33 +27,7 @@
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
     const date = new Date(Number(data.timestamp) * 1000)
 
-    let acks: [string, string][] = [];
-    msg_history.subscribe((new_hist) => {
-        // Pull out list of UIDS of users that have acked this Message
-        // If User is in anonymous mode, it will be a string that says "Anonymous"
-        // otherwise, it will be a hex string of the UID
-        // TODO: pull out acks in ChatScreen component, then pass down into individual
-        // MessageBoxes so that this computation isn't repeated for each message box 
-        invoke("cmd_get_known_users")
-            .then((payload: any) => {
-                let known_users = payload as KnownUsers;
-
-                acks = new_hist
-                        .reduce((acked_uids, current) => {
-                            if ("Ack" in current && current.Ack.mid == data.mid ) { //&& current.Ack.uid != $profile?.uid) {
-                                if (current.Ack.uid == null) {
-                                    return acked_uids.concat([["Anonymous", "N/A"]]);
-                                } 
-                                const name = known_users.uid_to_name[current.Ack.uid];
-                                return acked_uids.concat([[name, current.Ack.uid.toString(16)]]);
-                            }
-                            return acked_uids;
-                        }, <([string, string])[]>[]);
-                    
-                console.log("acks", acks)
-            });
-        
-    })
+    export let acks: {name: string, uid: string}[];
 
     let hovering: boolean = false;
     let clicked: boolean = false;

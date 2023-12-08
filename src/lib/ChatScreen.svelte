@@ -1,10 +1,11 @@
 <script lang="ts">
     import MessageBox from "$lib/MessageBox.svelte"
-	import type { MessageData } from "$lib/bindings/MessageData";
     import type { Message } from "$lib/bindings/Message";
 	import { msg_history, profile } from "$lib/stores";
-	import InputBox from "./InputBox.svelte";
-    import { appWindow } from "@tauri-apps/api/window";
+	import InputBox from "$lib/InputBox.svelte";
+    import { appWindow, currentMonitor } from "@tauri-apps/api/window";
+    import { invoke } from "@tauri-apps/api";
+    import type { KnownUsers } from "$lib/bindings/KnownUsers";
 
     let rec_messages: HTMLElement;
 
@@ -43,6 +44,49 @@
 
     });
 
+    // Map from MID (message id) to the formatted information about all the acks
+    let mid_to_acks: Map<
+        number,
+        {name: string, uid: string}[]
+    > = new Map();
+
+    msg_history.subscribe((new_hist) => {
+        // Pull out list of UIDS of users that have acked this Message
+        // If User is in anonymous mode, it will be a string that says "Anonymous"
+        // otherwise, it will be a hex string of the UID
+        // TODO: pull out acks in ChatScreen component, then pass down into individual
+        // MessageBoxes so that this computation isn't repeated for each message box 
+        invoke("cmd_get_known_users")
+            .then((payload: any) => {
+                let known_users = payload as KnownUsers;
+
+                mid_to_acks = new Map();
+
+                new_hist.forEach((msg) => {
+                    if ("Ack" in msg) { //&& msg.Ack.uid != $profile?.uid) {
+                        let curr_ack_list = mid_to_acks.get(msg.Ack.mid);
+                        if (curr_ack_list == undefined) {
+                            mid_to_acks.set(msg.Ack.mid, []);
+                            curr_ack_list = [];
+                        }
+
+                        if (msg.Ack.uid == null) {
+                            mid_to_acks.set(
+                                msg.Ack.mid,
+                                curr_ack_list.concat({name: "Anonymous", uid: "N/A"})
+                            );    
+                        }  else {
+                            const name = known_users.uid_to_name[msg.Ack.uid];
+                            mid_to_acks.set(
+                                msg.Ack.mid, 
+                                curr_ack_list.concat({name: name, uid: msg.Ack.uid.toString(16)})
+                            );
+                        }
+                    }
+                });
+            });
+    })
+
 </script>
 
 <main>
@@ -50,18 +94,23 @@
         {#each $msg_history as msg}
             {#if "Hello" in msg}
                 <div>
-                    <MessageBox data={msg.Hello} />
+                    <MessageBox 
+                        data={msg.Hello} 
+                        acks={mid_to_acks.get(msg.Hello.mid) || []} 
+                        />
                 </div>
             {:else if "Text" in msg}
                 <div>
-                    <MessageBox data={msg.Text} />
+                    <MessageBox
+                        data={msg.Text}
+                        acks={mid_to_acks.get(msg.Text.mid) || []} 
+                        />
                 </div>
             {/if}
         {/each}
     </section>
     <section id="input-message">
-        <InputBox>
-        </InputBox>
+        <InputBox />
     </section>
 </main>
 

@@ -11,7 +11,7 @@
 
     export let isOpen: boolean;
 
-    export let message: [string,string][];
+    export let message: {name: string, uid: string}[];
 
     export let startClose: Writable<boolean>;
 
@@ -26,17 +26,6 @@
 
     let PIXELS_PER_ROW = 27;
     let modal_height: number = 100 + (PIXELS_PER_ROW * message.length);
-
-    onMount(() => {
-        // let num_users = Math.floor(Math.random() * 10);
-        let num_users = 20;
-
-        message = new Array(num_users);
-        modal_height = 100 + (PIXELS_PER_ROW * message.length);
-        for (let i = 0; i < num_users; i++) {
-            message[i] = ["Testlx", Math.floor(Math.random() * 1000000).toString(16)];
-        }
-    });
 </script>
 
 {#if isOpen}
@@ -53,8 +42,8 @@
             <tbody>
                 {#each message as ack}
                     <tr>
-                        <td>{ack[0]}</td>
-                        <td>{ack[1]}</td>
+                        <td>{ack.name}</td>
+                        <td>{ack.uid}</td>
                     </tr>
                 {/each}
             </tbody>
