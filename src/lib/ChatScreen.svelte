@@ -54,8 +54,6 @@
         // Pull out list of UIDS of users that have acked this Message
         // If User is in anonymous mode, it will be a string that says "Anonymous"
         // otherwise, it will be a hex string of the UID
-        // TODO: pull out acks in ChatScreen component, then pass down into individual
-        // MessageBoxes so that this computation isn't repeated for each message box 
         invoke("cmd_get_known_users")
             .then((payload: any) => {
                 let known_users = payload as KnownUsers;
