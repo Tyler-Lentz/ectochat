@@ -56,6 +56,16 @@ impl Message {
         d.read_to_string(&mut s).unwrap();
         serde_json::from_str(&s).unwrap()
     }
+
+    pub fn get_type_str(&self) -> &str {
+        match self {
+            Self::Ack { uid, mid } => "Ack",
+            Self::Broadcast(_) => "Broadcast",
+            Self::Hello(_) => "Hello",
+            Self::Image(_) => "Image",
+            Self::Text(_) => "Text",
+        }
+    }
 }
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Debug)]

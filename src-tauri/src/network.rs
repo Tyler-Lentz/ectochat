@@ -64,7 +64,7 @@ impl ConnectionState {
 
             async_runtime::spawn(async move {
                 loop {
-                    send_broadcasts(profile.clone(), broadcast_socket.clone());
+                    send_broadcast(profile.clone(), broadcast_socket.clone());
                     tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
                 }
             });
@@ -133,7 +133,7 @@ fn manage_p2p_connections(
                         // pull out the bytes we used from the buffer
                         let _ = stream.read_exact(&mut full_msg_buf);
 
-                        println!("Received {} byte message from {}", msg_len, stream.peer_addr().unwrap());
+                        println!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), stream.peer_addr().unwrap());
 
                         // add to msg history
                         {
@@ -168,7 +168,7 @@ fn manage_p2p_connections(
     }
 }
 
-fn send_broadcasts(
+fn send_broadcast(
     profile: Arc<Mutex<Profile>>,
     broadcast_socket: Arc<Mutex<UdpSocket>>,
 ) {
@@ -226,8 +226,7 @@ fn listen_for_broadcasts(
     let bcast_socket = broadcast_socket.lock().unwrap();
     let mut buf = [0; 100]; // broadcast msgs will be tiny 
     match bcast_socket.recv_from(&mut buf) {
-        Ok((received, rec_saddr)) => {
-            println!("Broadcast: received {received} bytes from {rec_saddr}");  
+        Ok((_received, rec_saddr)) => {
             let rec_msg = Message::from_network(&buf);
             match &rec_msg {
                 Message::Broadcast(rec_uid) => {
@@ -240,7 +239,6 @@ fn listen_for_broadcasts(
                     }
                 },
                 _ => {
-                    println!("Non broadcast received over UDP, ignoring");
                     return;
                 }
             }
@@ -249,17 +247,15 @@ fn listen_for_broadcasts(
             
             let mut p2p_ips = p2p_ips.lock().unwrap();
             if p2p_ips.contains(&ip) {
-                println!("Already have channel open with {ip}, ignoring broadcast.");
+                // do nothing
             } else {
                 p2p_ips.insert(ip);
 
                 let possible_tcp_saddrs: Vec<SocketAddr> = (MIN_P2P_PORT..=MAX_P2P_PORT).map(|port| {
                     SocketAddr::new(ip, port)
                 }).collect();
-                println!("Attempting to make tcp stream");
                 match TcpStream::connect(&possible_tcp_saddrs[..]) {
                     Ok(mut stream) => {
-                        println!("Ok");
                         let _ = stream.set_nonblocking(true);
                         {
                             let profile = profile.lock().unwrap(); 
@@ -271,9 +267,9 @@ fn listen_for_broadcasts(
                             let mut p2p_streams = p2p_streams.lock().unwrap();
                             p2p_streams.push(stream);
                         }
+                        println!("Successfully made tcp stream to {ip}");
                     },
                     Err(_err) => {
-                        println!("{_err:#?}");
                         p2p_ips.remove(&ip);
                     },
                 }

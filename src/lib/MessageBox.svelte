@@ -14,12 +14,12 @@
     export let data: MessageData;
 
     onMount(() => {
-        let imageData = new ImageData(
-            new Uint8ClampedArray([]),
-            PROFILE_PIC_SIZE, 
-            PROFILE_PIC_SIZE 
-        );
-        canvas.setImageData(imageData);
+        // let imageData = new ImageData(
+        //     new Uint8ClampedArray([]),
+        //     PROFILE_PIC_SIZE, 
+        //     PROFILE_PIC_SIZE 
+        // );
+        // canvas.setImageData(imageData);
     });
 
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
