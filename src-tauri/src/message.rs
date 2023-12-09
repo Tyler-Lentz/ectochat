@@ -8,18 +8,29 @@ use flate2::Compression;
 use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
 
-#[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Debug)]
+#[derive(TS, Serialize, Deserialize, Clone, Debug)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub enum Message {
+    // Broadcast messages sent to find other hosts
+    // Send out UID in broadcast message
+    // It is the responsibility of the host with greater 
+    // UID to initiate the TCP connection
+    Broadcast(u32),
+
+    // Message sent in response to broadcast, over tcp,
+    // to establish TCP connection
+    Hello(MessageData),
+
+    // Messages sent p2p over tcp streams, actual data
+    // sent via chat
     Text(MessageData), 
     Image(MessageData),
-    Hello(MessageData),
     Ack{mid: u32, uid: Option<u32>},
 }
 
 impl Message {
-    pub fn compress(&self) -> Vec<u8> {
+    pub fn to_network(&self) -> Vec<u8> {
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         if let Err(err) = e.write_all(serde_json::to_string(&self).unwrap().as_bytes()) {
             println!("{err}");
@@ -27,7 +38,7 @@ impl Message {
         e.finish().unwrap()
     }
 
-    pub fn from_compressed(buf: &[u8]) -> Self {
+    pub fn from_network(buf: &[u8]) -> Self {
         let mut d = GzDecoder::new(buf);
         let mut s = String::new();
         d.read_to_string(&mut s).unwrap();

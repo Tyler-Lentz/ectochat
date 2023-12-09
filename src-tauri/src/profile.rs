@@ -1,11 +1,11 @@
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 use tauri::State;
 
 use crate::network::ConnectionState;
-use crate::utilities::{self, KnownUsersState};
-use crate::message::MessageHistory;
+use crate::utilities::{self, KnownUsersState, gen_rand_id, get_curr_time};
+use crate::message::{MessageHistory, Message, MessageData};
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
 #[ts(export)]
@@ -26,6 +26,17 @@ impl Profile {
             pic: Vec::new()
         }
     }
+
+    pub fn make_hello_msg(&self) -> Message {
+        Message::Hello(MessageData::new(
+            self.name, 
+            self.uid, 
+            gen_rand_id(), 
+            get_curr_time(),
+            b"Hello World!".to_vec(), 
+            self.pic
+        ))
+    }
 }
 
 fn generate_random_name() -> String {
@@ -38,7 +49,7 @@ fn generate_random_name() -> String {
 pub fn cmd_personalize_new_profile(
     new_name: &str,
     new_pic: &str, 
-    profile: State<ProfileState>, 
+    profile_state: State<ProfileState>, 
     conn: State<ConnectionState>,
     msg_history: State<MessageHistory>,
     known_users: State<KnownUsersState>,
@@ -47,7 +58,7 @@ pub fn cmd_personalize_new_profile(
     // Update the profile with the profile options the user is allowed
     // to select.
 
-    let mut profile = profile.mtx.lock().unwrap();
+    let mut profile = profile_state.profile.lock().unwrap();
         
     if new_name != "" {
         profile.name = String::from(new_name);
@@ -67,11 +78,13 @@ pub fn cmd_personalize_new_profile(
 }
 
 pub struct ProfileState {
-    pub mtx: Mutex<Profile>,
+    pub profile: Arc<Mutex<Profile>>,
 }
 
 impl ProfileState {
     pub fn new() -> ProfileState {
-        ProfileState {mtx: Mutex::new(Profile::new(generate_random_name()))}
+        ProfileState {
+            profile: Arc::new(Mutex::new(Profile::new(generate_random_name())))
+        }
     }
 }
