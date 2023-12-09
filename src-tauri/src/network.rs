@@ -1,4 +1,4 @@
-use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener}, sync::{Mutex, Arc}, thread, time::Duration, collections::HashSet, io::{Write, Read}};
+use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr}, sync::{Mutex, Arc}, thread, time::Duration, collections::HashSet, io::{Write, Read}};
 use tauri::{State, async_runtime};
 use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{KnownUsersState, gen_rand_id, get_curr_time}, profile::Profile};
 use crate::profile::ProfileState;
@@ -6,16 +6,16 @@ use crate::utilities;
 
 const BROADCAST_ADDR: &str = "255.255.255.255";
 const BROADCAST_PORT: &str = "59813";
-const MIN_P2P_PORT: u16 = 59813;
-const MAX_P2P_PORT: u16 = 60000; // allow like 200ish p2p connections, don't expect much more...
+const MIN_P2P_PORT: u16 = 61000;
+const MAX_P2P_PORT: u16 = 61255;
 
-const SLEEP_TIME: u64 = 200;
+const SLEEP_TIME: u64 = 100;
 
 pub struct ConnectionState {
     broadcast_socket: Arc<Mutex<UdpSocket>>,
     p2p_streams: Arc<Mutex<Vec<TcpStream>>>,
     p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    p2p_listener: Arc<Mutex<TcpListener>>,
+    p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
 }
 
 impl ConnectionState {
@@ -24,17 +24,21 @@ impl ConnectionState {
         socket.set_broadcast(true).unwrap();
         socket.set_nonblocking(true).unwrap();
 
-        let listener = TcpListener::bind("0.0.0.0:0").unwrap();
-        if let Err(e) = listener.set_nonblocking(true) {
-            println!("Could not set listener to non blocking: {e:#?}");
-        }
+        let listeners = (MIN_P2P_PORT..=MAX_P2P_PORT)
+            .filter_map(|port| {
+                let res = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0,0,0,0)), port));
+                if let Ok(listener) = &res {
+                    let _ = listener.set_nonblocking(true);
+                }
+                res.ok()
+            })
+            .collect();
 
-        // TODO: make tcp listener outside so cna set nonblocking
         ConnectionState {
             broadcast_socket: Arc::new(Mutex::new(socket)),
             p2p_streams: Arc::new(Mutex::new(Vec::new())),
             p2p_ips: Arc::new(Mutex::new(HashSet::new())),
-            p2p_listener: Arc::new(Mutex::new(listener)),
+            p2p_listeners: Arc::new(Mutex::new(listeners)),
         }
     }
 
@@ -44,20 +48,55 @@ impl ConnectionState {
         profile: Arc<Mutex<Profile>>,
         msg_history: Arc<Mutex<Vec<Message>>>,
     ) {
-        let p2p_streams = self.p2p_streams.clone();
-        let p2p_ips = self.p2p_ips.clone();
-        let p2p_listener = self.p2p_listener.clone();
-        let broadcast_socket = self.broadcast_socket.clone();
+        {
+            let p2p_streams = self.p2p_streams.clone();
+            let broadcast_socket = self.broadcast_socket.clone();
+            let profile = profile.clone();
+            let window = window.clone();
 
-        async_runtime::spawn(async move {
-            loop {
-                manage_p2p_connections(window.clone(), msg_history.clone(), p2p_streams.clone());
-                send_broadcasts(profile.clone(), broadcast_socket.clone());
-                listen_for_p2p_connections(profile.clone(), p2p_listener.clone(), p2p_ips.clone(), p2p_streams.clone());
-                listen_for_broadcasts(profile.clone(), broadcast_socket.clone(),  p2p_ips.clone(), p2p_streams.clone());
-                tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
-            }
-        });
+            async_runtime::spawn(async move {
+                loop {
+                    manage_p2p_connections(window.clone(), msg_history.clone(), p2p_streams.clone());
+                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+                }
+            });
+
+
+            async_runtime::spawn(async move {
+                loop {
+                    send_broadcasts(profile.clone(), broadcast_socket.clone());
+                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+                }
+            });
+        }
+
+        {
+            let p2p_streams = self.p2p_streams.clone();
+            let p2p_ips = self.p2p_ips.clone();
+            let broadcast_socket = self.broadcast_socket.clone();
+            let profile = profile.clone();
+
+            async_runtime::spawn(async move {
+                loop {
+                    listen_for_broadcasts(profile.clone(), broadcast_socket.clone(),  p2p_ips.clone(), p2p_streams.clone());
+                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+                }
+            });
+        }
+
+        {
+            let p2p_streams = self.p2p_streams.clone();
+            let p2p_ips = self.p2p_ips.clone();
+            let p2p_listeners = self.p2p_listeners.clone();
+            let profile = profile.clone();
+
+            async_runtime::spawn(async move {
+                loop {
+                    listen_for_p2p_connections(profile.clone(), p2p_listeners.clone(), p2p_ips.clone(), p2p_streams.clone());
+                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+                }
+            });
+        }
     }
 }
 
@@ -140,38 +179,40 @@ fn send_broadcasts(
 
 fn listen_for_p2p_connections(
     profile: Arc<Mutex<Profile>>,
-    p2p_listener: Arc<Mutex<TcpListener>>,
+    p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
     p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
     p2p_streams: Arc<Mutex<Vec<TcpStream>>>,
 ) {
-    let p2p_listener = p2p_listener.lock().unwrap();
-    for stream in p2p_listener.incoming() {
-        match stream {
-            Ok(mut stream) => {
-                let _ = stream.set_nonblocking(true);
-                {
-                    let mut p2p_ips = p2p_ips.lock().unwrap();
-                    let peer_ip = stream.peer_addr().unwrap().ip();
-                    // keep track that we have an active connection with this ip
-                    p2p_ips.insert(peer_ip); 
-                }
-                {
-                    let profile = profile.lock().unwrap();
-                    // Send initial hello msg
-                    if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
-                        println!("Error writing hello msg to listen stream: {e:#?}");
+    let p2p_listeners = p2p_listeners.lock().unwrap();
+    for listener in p2p_listeners.iter() {
+        for stream in listener.incoming() {
+            match stream {
+                Ok(mut stream) => {
+                    let _ = stream.set_nonblocking(true);
+                    {
+                        let mut p2p_ips = p2p_ips.lock().unwrap();
+                        let peer_ip = stream.peer_addr().unwrap().ip();
+                        // keep track that we have an active connection with this ip
+                        p2p_ips.insert(peer_ip); 
                     }
-                }
-                {
-                    let mut p2p_streams = p2p_streams.lock().unwrap();
-                    // add stream so we start doing listening on it
-                    p2p_streams.push(stream); 
-                }
-            },
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                break;
-            },
-            Err(e) => println!("{e}"),
+                    {
+                        let profile = profile.lock().unwrap();
+                        // Send initial hello msg
+                        if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
+                            println!("Error writing hello msg to listen stream: {e:#?}");
+                        }
+                    }
+                    {
+                        let mut p2p_streams = p2p_streams.lock().unwrap();
+                        // add stream so we start doing listening on it
+                        p2p_streams.push(stream); 
+                    }
+                },
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    break;
+                },
+                Err(e) => println!("{e}"),
+            }
         }
     }
 }
@@ -212,11 +253,13 @@ fn listen_for_broadcasts(
             } else {
                 p2p_ips.insert(ip);
 
-                let possible_tcp_saddrs: Vec<SocketAddr> = (MIN_P2P_PORT..MAX_P2P_PORT).map(|port| {
+                let possible_tcp_saddrs: Vec<SocketAddr> = (MIN_P2P_PORT..=MAX_P2P_PORT).map(|port| {
                     SocketAddr::new(ip, port)
                 }).collect();
+                println!("Attempting to make tcp stream");
                 match TcpStream::connect(&possible_tcp_saddrs[..]) {
                     Ok(mut stream) => {
+                        println!("Ok");
                         let _ = stream.set_nonblocking(true);
                         {
                             let profile = profile.lock().unwrap(); 
@@ -230,6 +273,7 @@ fn listen_for_broadcasts(
                         }
                     },
                     Err(_err) => {
+                        println!("{_err:#?}");
                         p2p_ips.remove(&ip);
                     },
                 }
