@@ -10,7 +10,6 @@ fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             profile::cmd_personalize_new_profile,
-            network::cmd_send_hello,
             network::cmd_send_text,
             utilities::cmd_get_known_users,
         ])

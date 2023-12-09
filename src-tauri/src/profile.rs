@@ -5,7 +5,7 @@ use tauri::State;
 
 use crate::network::ConnectionState;
 use crate::utilities::{self, KnownUsersState, gen_rand_id, get_curr_time};
-use crate::message::{MessageHistory, Message, MessageData};
+use crate::message::{MessageHistory, Message, MessageHeader};
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
 #[ts(export)]
@@ -28,14 +28,12 @@ impl Profile {
     }
 
     pub fn make_hello_msg(&self) -> Message {
-        Message::Hello(MessageData::new(
+        Message::Hello(MessageHeader::new(
             self.name, 
             self.uid, 
             gen_rand_id(), 
             get_curr_time(),
-            b"Hello World!".to_vec(), 
-            self.pic
-        ))
+        ), self.pic)
     }
 }
 
@@ -72,7 +70,7 @@ pub fn cmd_personalize_new_profile(
         })
         .collect();
 
-    conn.start_listen(window, profile.uid, msg_history, known_users);
+    conn.manage_connections(profile_state.profile.clone());
 
     profile.clone()
 }

@@ -8,6 +8,8 @@ use flate2::Compression;
 use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
 
+pub const PADDED_HEADER_LEN: usize = 200;
+
 #[derive(TS, Serialize, Deserialize, Clone, Debug)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
@@ -16,51 +18,60 @@ pub enum Message {
     // Send out UID in broadcast message
     // It is the responsibility of the host with greater 
     // UID to initiate the TCP connection
-    Broadcast(u32),
+    Broadcast(MessageHeader),
 
     // Message sent in response to broadcast, over tcp,
     // to establish TCP connection
-    Hello(MessageData),
+    Hello(MessageHeader, Vec<u8>),
 
     // Messages sent p2p over tcp streams, actual data
     // sent via chat
-    Text(MessageData), 
-    Image(MessageData),
-    Ack{mid: u32, uid: Option<u32>},
+    Text(MessageHeader, Vec<u8>), 
+    Image(MessageHeader, Vec<u8>),
+    Ack(MessageHeader),
 }
 
 impl Message {
     pub fn to_network(&self) -> Vec<u8> {
+        let (mut header, payload) = match self {
+            Self::Broadcast(header)       |
+            Self::Ack(header)             => (header.clone(), None),
+            Self::Hello(header, payload)  |
+            Self::Text(header, payload)   |
+            Self::Image(header, payload)  => (header.clone(), Some(payload)),
+        };
+
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         if let Err(err) = e.write_all(serde_json::to_string(&self).unwrap().as_bytes()) {
             println!("{err}");
         }
-        e.finish().unwrap()
-    }
+        let payload_bytes = e.finish().unwrap();
 
-    pub fn from_network(buf: &[u8]) -> Self {
-        let mut d = GzDecoder::new(buf);
-        let mut s = String::new();
-        d.read_to_string(&mut s).unwrap();
-        serde_json::from_str(&s).unwrap()
+        header.payload_len = payload_bytes.len();
+        const SPACE_ASCII: u8 = 32;
+        let mut header_bytes = serde_json::to_vec(&header).unwrap();
+        header_bytes.resize(PADDED_HEADER_LEN, SPACE_ASCII);
+        
+        [header_bytes, payload_bytes].concat()
     }
 }
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Debug)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
-pub struct MessageData {
+pub struct MessageHeader {
     pub name: String,
     pub uid: u32,
     pub mid: u32,
     pub timestamp: u64,
-    pub payload: Vec<u8>,
-    pub pic: Vec<u8>,
+    pub payload_len: usize,
 }
 
-impl MessageData {
-    pub fn new(name: String, uid: u32, mid: u32, timestamp: u64, payload: Vec<u8>, pic: Vec<u8>) -> MessageData {
-        MessageData { name, uid, mid, timestamp, payload, pic }
+impl MessageHeader {
+    // payload_len set to 0, because it will be set to the correct compressed size
+    // in the to_network function on Message
+    pub fn new(name: String, uid: u32, mid: u32, timestamp: u64 ) -> MessageHeader {
+        MessageHeader { name, uid, mid, timestamp, payload_len: 0 }
     }
 }
 
