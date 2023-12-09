@@ -89,14 +89,7 @@
 <main>
     <section id="rec-messages" bind:this={rec_messages}>
         {#each $msg_history as msg}
-            {#if "Hello" in msg}
-                <div>
-                    <MessageBox 
-                        data={msg.Hello} 
-                        acks={mid_to_acks.get(msg.Hello.mid) || []} 
-                        />
-                </div>
-            {:else if "Text" in msg}
+            {#if "Text" in msg}
                 <div>
                     <MessageBox
                         data={msg.Text}

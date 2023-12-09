@@ -15,7 +15,7 @@
 
     onMount(() => {
         let imageData = new ImageData(
-            new Uint8ClampedArray(data.pic),
+            new Uint8ClampedArray([]),
             PROFILE_PIC_SIZE, 
             PROFILE_PIC_SIZE 
         );
