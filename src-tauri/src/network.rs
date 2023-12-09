@@ -1,4 +1,4 @@
-use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr}, sync::{Mutex, Arc}, thread, time::Duration, collections::HashSet, io::{Write, Read}};
+use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr, SocketAddrV4}, sync::{Mutex, Arc}, thread, time::Duration, collections::HashSet, io::{Write, Read}};
 use tauri::{State, async_runtime};
 use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{KnownUsersState, gen_rand_id, get_curr_time}, profile::Profile};
 use crate::profile::ProfileState;
@@ -11,9 +11,20 @@ const MAX_P2P_PORT: u16 = 61255;
 
 const SLEEP_TIME: u64 = 100;
 
+#[derive(PartialEq)]
+enum TcpStreamType {
+    Read,
+    Write,
+    Both,
+}
+
+fn is_localhost_stream(stream: &TcpStream) -> bool {
+    stream.peer_addr().unwrap().ip() == stream.local_addr().unwrap().ip()
+}
+
 pub struct ConnectionState {
     broadcast_socket: Arc<Mutex<UdpSocket>>,
-    p2p_streams: Arc<Mutex<Vec<TcpStream>>>,
+    p2p_streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>,
     p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
     p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
 }
@@ -103,10 +114,16 @@ impl ConnectionState {
 fn manage_p2p_connections(
     window: tauri::Window,
     msg_history: Arc<Mutex<Vec<Message>>>,
-    p2p_streams: Arc<Mutex<Vec<TcpStream>>>,
+    p2p_streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>,
 ) {
-    let p2p_streams = p2p_streams.lock().unwrap();
-    for mut stream in p2p_streams.iter() {
+    let mut p2p_streams = p2p_streams.lock().unwrap();
+    for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
+        if *stream_type == TcpStreamType::Write {
+            // If this stream should only be used for writing, skip
+            // because this function handles listening
+            continue
+        }
+
         let mut buf = [0u8; HEADER_LEN];
         match stream.peek(&mut buf) {
             Ok(num_bytes_read) => {
@@ -181,7 +198,7 @@ fn listen_for_p2p_connections(
     profile: Arc<Mutex<Profile>>,
     p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
     p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    p2p_streams: Arc<Mutex<Vec<TcpStream>>>,
+    p2p_streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>,
 ) {
     let p2p_listeners = p2p_listeners.lock().unwrap();
     for listener in p2p_listeners.iter() {
@@ -204,8 +221,14 @@ fn listen_for_p2p_connections(
                     }
                     {
                         let mut p2p_streams = p2p_streams.lock().unwrap();
+
+                        let stream_type = if is_localhost_stream(&stream) {
+                            TcpStreamType::Read
+                        } else {
+                            TcpStreamType::Both
+                        };
                         // add stream so we start doing listening on it
-                        p2p_streams.push(stream); 
+                        p2p_streams.push((stream_type, stream)); 
                     }
                 },
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -221,7 +244,7 @@ fn listen_for_broadcasts(
     profile: Arc<Mutex<Profile>>,
     broadcast_socket: Arc<Mutex<UdpSocket>>,
     p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    p2p_streams: Arc<Mutex<Vec<TcpStream>>>,
+    p2p_streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>,
 ) {
     let bcast_socket = broadcast_socket.lock().unwrap();
     let mut buf = [0; 100]; // broadcast msgs will be tiny 
@@ -264,8 +287,13 @@ fn listen_for_broadcasts(
                             }
                         }
                         {
+                            let stream_type = if is_localhost_stream(&stream) {
+                                TcpStreamType::Write
+                            } else {
+                                TcpStreamType::Both
+                            };
                             let mut p2p_streams = p2p_streams.lock().unwrap();
-                            p2p_streams.push(stream);
+                            p2p_streams.push((stream_type, stream));
                         }
                         println!("Successfully made tcp stream to {ip}");
                     },
@@ -295,9 +323,14 @@ pub fn cmd_send_text(
         msg.as_bytes().to_vec()
     ));
 
-    let p2p_streams = conn.p2p_streams.lock().unwrap();
+    let mut p2p_streams = conn.p2p_streams.lock().unwrap();
 
-    for mut stream in p2p_streams.iter() {
+    for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
+        if *stream_type == TcpStreamType::Read {
+            // if the channel should be only used for read, then dont write to it
+            continue
+        }
+
         if let Err(e) = stream.write(&msg.to_network()) {
             println!("Error writing text msg to {}: {:#?}", stream.peer_addr().unwrap(), e);
         };
