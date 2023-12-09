@@ -5,7 +5,7 @@ use tauri::State;
 
 use crate::network::ConnectionState;
 use crate::utilities::{self, KnownUsersState, gen_rand_id, get_curr_time};
-use crate::message::{MessageHistory, Message, MessageHeader};
+use crate::message::{MessageHistory, Message, MessageData};
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
 #[ts(export)]
@@ -28,12 +28,13 @@ impl Profile {
     }
 
     pub fn make_hello_msg(&self) -> Message {
-        Message::Hello(MessageHeader::new(
-            self.name, 
+        Message::Hello(MessageData::new(
+            self.name.clone(), 
             self.uid, 
             gen_rand_id(), 
             get_curr_time(),
-        ), self.pic)
+            self.pic.clone()
+        ))
     }
 }
 
@@ -50,7 +51,6 @@ pub fn cmd_personalize_new_profile(
     profile_state: State<ProfileState>, 
     conn: State<ConnectionState>,
     msg_history: State<MessageHistory>,
-    known_users: State<KnownUsersState>,
     window: tauri::Window,
 ) -> Profile {
     // Update the profile with the profile options the user is allowed
@@ -70,7 +70,11 @@ pub fn cmd_personalize_new_profile(
         })
         .collect();
 
-    conn.manage_connections(profile_state.profile.clone());
+    conn.manage_connections(
+        window, 
+        profile_state.profile.clone(),
+        msg_history.msgs.clone(),
+    );
 
     profile.clone()
 }

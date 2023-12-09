@@ -1,6 +1,6 @@
 use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener}, sync::{Mutex, Arc}, thread, time::Duration, collections::HashSet, io::{Write, Read}};
 use tauri::State;
-use crate::{message::{Message, MessageHeader, PADDED_HEADER_LEN}, utilities::{KnownUsersState, gen_rand_id, get_curr_time}, profile::Profile};
+use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{KnownUsersState, gen_rand_id, get_curr_time}, profile::Profile};
 use crate::profile::ProfileState;
 use crate::utilities;
 
@@ -26,7 +26,7 @@ impl ConnectionState {
         socket.set_nonblocking(true).unwrap();
 
         let listener = TcpListener::bind("0.0.0.0:0").unwrap();
-        listener.set_nonblocking(true);
+        let _ = listener.set_nonblocking(true);
 
         // TODO: make tcp listener outside so cna set nonblocking
         ConnectionState {
@@ -39,36 +39,40 @@ impl ConnectionState {
 
     pub fn manage_connections(
         &self,
+        window: tauri::Window,
         profile: Arc<Mutex<Profile>>,
+        msg_history: Arc<Mutex<Vec<Message>>>,
     ) {
-        self.manage_p2p_connections();
-        self.send_broadcasts(profile);
-        self.listen_for_p2p_connections(profile);
+        self.manage_p2p_connections(window, msg_history);
+        self.send_broadcasts(profile.clone());
+        self.listen_for_p2p_connections(profile.clone());
         self.listen_for_broadcasts(profile);
     }
 
     fn manage_p2p_connections(
         &self,
+        window: tauri::Window,
+        msg_history: Arc<Mutex<Vec<Message>>>,
     ) {
         let p2p_streams = self.p2p_streams.clone();
 
-        thread::spawn(|| {
+        thread::spawn(move || {
             loop {
                 thread::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME));
                 {
                     let p2p_streams = p2p_streams.lock().unwrap();
                     for mut stream in p2p_streams.iter() {
-                        let mut buf: [u8; PADDED_HEADER_LEN];
+                        let mut buf = [0u8; HEADER_LEN];
                         match stream.peek(&mut buf) {
                             Ok(num_bytes_read) => {
-                                if num_bytes_read < PADDED_HEADER_LEN {
+                                if num_bytes_read < HEADER_LEN{
                                     // not enough bytes on the wire for entire header, so stop
                                     continue
                                 }
 
-                                let header: MessageHeader = serde_json::from_slice(&buf).unwrap();
-                                let full_msg_len = header.payload_len + PADDED_HEADER_LEN;
-                                let mut full_msg_buf: [u8; u16::MAX as usize];
+                                let msg_len = u64::from_le_bytes(buf); // len of msg object
+                                let full_msg_len = HEADER_LEN + msg_len as usize; // include 8 bytes from header
+                                let mut full_msg_buf = vec![0u8; full_msg_len];
                                 match stream.peek(&mut full_msg_buf) {
                                     Ok(num_bytes_read) => {
                                         if num_bytes_read < full_msg_len {
@@ -79,6 +83,24 @@ impl ConnectionState {
                                         // Ok... so this is where we have been trying to get this
                                         // whole time. Now we have the entire msg in the full_msg_buf
                                         // from 0..full_msg_len
+                                        let rec_msg = Message::from_network(&full_msg_buf[0..full_msg_len]);
+
+                                        // pull out the bytes we used from the buffer
+                                        let _ = stream.read_exact(&mut full_msg_buf);
+
+                                        println!("Received {} byte message from {}", msg_len, stream.peer_addr().unwrap());
+
+                                        // add to msg history
+                                        {
+                                            let mut msg_history = msg_history.lock().unwrap();
+                                            msg_history.push(rec_msg.clone());
+                                        }
+
+                                        // send msg to frontend
+                                        let res = window.emit("evt_new_msg", rec_msg);
+                                        if let Err(e) = res {
+                                            println!("evt_new_msg err {e:#?}");
+                                        }
                                     },
                                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                         continue
@@ -108,19 +130,18 @@ impl ConnectionState {
         &self,
         profile: Arc<Mutex<Profile>>
     ) {
-        let header = {
-            let profile = profile.lock().unwrap();
-            MessageHeader::new(profile.name, profile.uid, gen_rand_id(), get_curr_time())
+        let uid = {
+            profile.lock().unwrap().uid
         };
 
-        thread::spawn(|| {
-            let socket = self.broadcast_socket.clone();
+        let socket = self.broadcast_socket.clone();
 
+        thread::spawn(move || {
             loop {
                 thread::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME));
                 {
-                    let socket = socket.lock().unwrap()
-                        .send_to(&Message::Broadcast(header).to_network(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
+                    socket.lock().unwrap()
+                        .send_to(&Message::Broadcast(uid).to_network(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
                         .expect("Couldn't send msg");
                 }
             }
@@ -143,7 +164,7 @@ impl ConnectionState {
                     for stream in p2p_listener.incoming() {
                         match stream {
                             Ok(mut stream) => {
-                                stream.set_nonblocking(true);
+                                let _ = stream.set_nonblocking(true);
                                 {
                                     let mut p2p_ips = p2p_ips.lock().unwrap();
                                     let peer_ip = stream.peer_addr().unwrap().ip();
@@ -153,7 +174,9 @@ impl ConnectionState {
                                 {
                                     let profile = profile.lock().unwrap();
                                     // Send initial hello msg
-                                    stream.write(&profile.make_hello_msg().to_network());
+                                    if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
+                                        println!("Error writing hello msg to listen stream: {e:#?}");
+                                    }
                                 }
                                 {
                                     let mut p2p_streams = p2p_streams.lock().unwrap();
@@ -217,17 +240,19 @@ impl ConnectionState {
                                 }).collect();
                                 match TcpStream::connect(&possible_tcp_saddrs[..]) {
                                     Ok(mut stream) => {
-                                        stream.set_nonblocking(true);
+                                        let _ = stream.set_nonblocking(true);
+                                        {
+                                            let profile = profile.lock().unwrap(); 
+                                            if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
+                                                println!("Error writing hello msg to connect stream: {e:#?}");
+                                            }
+                                        }
                                         {
                                             let mut p2p_streams = p2p_streams.lock().unwrap();
                                             p2p_streams.push(stream);
                                         }
-                                        {
-                                            let profile = profile.lock().unwrap(); 
-                                            stream.write(&profile.make_hello_msg().to_network());
-                                        }
                                     },
-                                    Err(err) => {
+                                    Err(_err) => {
                                         p2p_ips.remove(&ip);
                                     },
                                 }
@@ -249,18 +274,19 @@ pub fn cmd_send_text(
 ) {
     let profile = profile.profile.lock().unwrap();
 
-    let msg = Message::Text(MessageHeader::new(
+    let msg = Message::Text(MessageData::new(
         profile.name.clone(),
         profile.uid,
         utilities::gen_rand_id(),
         utilities::get_curr_time(),
-    ), msg.as_bytes().to_vec());
+        msg.as_bytes().to_vec()
+    ));
 
-    let socket = conn.broadcast_socket.lock().unwrap();
+    let p2p_streams = conn.p2p_streams.lock().unwrap();
 
-    for _ in 0..3 {
-        socket
-            .send_to(&msg.to_network()[..], format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
-            .expect("Couldn't send msg");
+    for mut stream in p2p_streams.iter() {
+        if let Err(e) = stream.write(&msg.to_network()) {
+            println!("Error writing text msg to {}: {:#?}", stream.peer_addr().unwrap(), e);
+        };
     }
 }
