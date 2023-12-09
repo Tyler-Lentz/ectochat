@@ -25,7 +25,9 @@ impl ConnectionState {
         socket.set_nonblocking(true).unwrap();
 
         let listener = TcpListener::bind("0.0.0.0:0").unwrap();
-        let _ = listener.set_nonblocking(true);
+        if let Err(e) = listener.set_nonblocking(true) {
+            println!("Could not set listener to non blocking: {e:#?}");
+        }
 
         // TODO: make tcp listener outside so cna set nonblocking
         ConnectionState {
@@ -48,11 +50,13 @@ impl ConnectionState {
         let broadcast_socket = self.broadcast_socket.clone();
 
         async_runtime::spawn(async move {
-            manage_p2p_connections(window, msg_history, p2p_streams.clone());
-            send_broadcasts(profile.clone(), broadcast_socket.clone());
-            listen_for_p2p_connections(profile.clone(), p2p_listener.clone(), p2p_ips.clone(), p2p_streams.clone());
-            listen_for_broadcasts(profile, broadcast_socket.clone(),  p2p_ips.clone(), p2p_streams.clone());
-            tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+            loop {
+                manage_p2p_connections(window.clone(), msg_history.clone(), p2p_streams.clone());
+                send_broadcasts(profile.clone(), broadcast_socket.clone());
+                listen_for_p2p_connections(profile.clone(), p2p_listener.clone(), p2p_ips.clone(), p2p_streams.clone());
+                listen_for_broadcasts(profile.clone(), broadcast_socket.clone(),  p2p_ips.clone(), p2p_streams.clone());
+                tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+            }
         });
     }
 }
@@ -164,7 +168,9 @@ fn listen_for_p2p_connections(
                     p2p_streams.push(stream); 
                 }
             },
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {},
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                break;
+            },
             Err(e) => println!("{e}"),
         }
     }
