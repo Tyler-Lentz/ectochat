@@ -143,134 +143,126 @@ fn manage_p2p_connections(
 ) {
     let mut outgoing_acks: Vec<Message> = vec![];
 
-    let mut p2p_streams = p2p_streams.lock().unwrap();
-    for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
-        if *stream_type == TcpStreamType::Write {
-            // If this stream should only be used for writing, skip
-            // because this function handles listening
-            continue
-        }
+    {
+        let mut p2p_streams = p2p_streams.lock().unwrap();
+        for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
+            if *stream_type == TcpStreamType::Write {
+                // If this stream should only be used for writing, skip
+                // because this function handles listening
+                continue
+            }
 
-        let mut buf = [0u8; HEADER_LEN];
-        match stream.peek(&mut buf) {
-            Ok(num_bytes_read) => {
-                if num_bytes_read < HEADER_LEN{
-                    // not enough bytes on the wire for entire header, so stop
-                    continue
-                }
-
-                let msg_len = u64::from_le_bytes(buf); // len of msg object
-                let full_msg_len = HEADER_LEN + msg_len as usize; // include 8 bytes from header
-                let mut full_msg_buf = vec![0u8; full_msg_len];
-                match stream.peek(&mut full_msg_buf) {
-                    Ok(num_bytes_read) => {
-                        if num_bytes_read < full_msg_len {
-                            // Full message is not there yet
-                            continue
-                        }
-
-                        // Ok... so this is where we have been trying to get this
-                        // whole time. Now we have the entire msg in the full_msg_buf
-                        // from 0..full_msg_len
-                        let rec_msg = Message::from_network(&full_msg_buf[0..full_msg_len]);
-
-                        // pull out the bytes we used from the buffer
-                        let _ = stream.read_exact(&mut full_msg_buf);
-
-                        println!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), stream.peer_addr().unwrap());
-
-                        // add to msg history
-                        {
-                            let mut msg_history = msg_history.lock().unwrap();
-                            msg_history.push(rec_msg.clone());
-                        }
-
-                        // Record profile if it is a new connection established
-                        {
-                            match &rec_msg {
-                                Message::Hello(data) => {
-                                // If this is a greeting from a new peer/user, we need to record their
-                                // information so we can poll it later
-                                    let mut known_users = known_users.lock().unwrap();
-                                    known_users.uid_to_profile.insert(data.uid,
-                                        Profile { 
-                                            name: data.name.clone(),
-                                            uid: data.uid, 
-                                            join_time: data.timestamp, 
-                                            pic: data.payload.clone(),
-                                        }
-                                    );
-                                },
-                                _ => {},
-                            }
-                        }
-
-                        // Send ack msg back
-                        {
-                            match &rec_msg {
-                                Message::Image(data) |
-                                Message::Text(data)  => {
-                                    // If from self, don't ACK
-                                    let uid = {
-                                        profile.lock().unwrap().uid
-                                    };
-
-                                    if data.uid != uid {
-                                        // Send back Ack
-                                        let ack_msg = Message::Ack{
-                                            uid: uid,
-                                            mid: data.mid,
-                                        };
-
-                                        outgoing_acks.push(ack_msg);
-                                    }
-                                },
-                                // don't care about hello or broadcast msg, 
-                                // also, more importantly, don't want to ack acks
-                                // because that would create an infinite loop of
-                                // packets bouncing across the network 
-                                _ => {} 
-                            }
-                        }
-
-
-                        // send msg to frontend
-                        let res = window.emit("evt_new_msg", rec_msg);
-                        if let Err(e) = res {
-                            println!("evt_new_msg err {e:#?}");
-                        }
-                    },
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        continue
-                    },
-                    Err(e) => {
-                        println!("Error peeking tcp stream for full msg: {e:#?}");
+            let mut buf = [0u8; HEADER_LEN];
+            match stream.peek(&mut buf) {
+                Ok(num_bytes_read) => {
+                    if num_bytes_read < HEADER_LEN{
+                        // not enough bytes on the wire for entire header, so stop
                         continue
                     }
+
+                    let msg_len = u64::from_le_bytes(buf); // len of msg object
+                    let full_msg_len = HEADER_LEN + msg_len as usize; // include 8 bytes from header
+                    let mut full_msg_buf = vec![0u8; full_msg_len];
+                    match stream.peek(&mut full_msg_buf) {
+                        Ok(num_bytes_read) => {
+                            if num_bytes_read < full_msg_len {
+                                // Full message is not there yet
+                                continue
+                            }
+
+                            // Ok... so this is where we have been trying to get this
+                            // whole time. Now we have the entire msg in the full_msg_buf
+                            // from 0..full_msg_len
+                            let rec_msg = Message::from_network(&full_msg_buf[0..full_msg_len]);
+
+                            // pull out the bytes we used from the buffer
+                            let _ = stream.read_exact(&mut full_msg_buf);
+
+                            println!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), stream.peer_addr().unwrap());
+
+                            // add to msg history
+                            {
+                                let mut msg_history = msg_history.lock().unwrap();
+                                msg_history.push(rec_msg.clone());
+                            }
+
+                            // Record profile if it is a new connection established
+                            {
+                                match &rec_msg {
+                                    Message::Hello(data) => {
+                                    // If this is a greeting from a new peer/user, we need to record their
+                                    // information so we can poll it later
+                                        let mut known_users = known_users.lock().unwrap();
+                                        known_users.uid_to_profile.insert(data.uid,
+                                            Profile { 
+                                                name: data.name.clone(),
+                                                uid: data.uid, 
+                                                join_time: data.timestamp, 
+                                                pic: data.payload.clone(),
+                                            }
+                                        );
+                                    },
+                                    _ => {},
+                                }
+                            }
+
+                            // Send ack msg back
+                            {
+                                match &rec_msg {
+                                    Message::Image(data) |
+                                    Message::Text(data)  => {
+                                        // If from self, don't ACK
+                                        let uid = {
+                                            profile.lock().unwrap().uid
+                                        };
+
+                                        if data.uid != uid {
+                                            // Send back Ack
+                                            let ack_msg = Message::Ack{
+                                                uid: uid,
+                                                mid: data.mid,
+                                            };
+
+                                            outgoing_acks.push(ack_msg);
+                                        }
+                                    },
+                                    // don't care about hello or broadcast msg, 
+                                    // also, more importantly, don't want to ack acks
+                                    // because that would create an infinite loop of
+                                    // packets bouncing across the network 
+                                    _ => {} 
+                                }
+                            }
+
+
+                            // send msg to frontend
+                            let res = window.emit("evt_new_msg", rec_msg);
+                            if let Err(e) = res {
+                                println!("evt_new_msg err {e:#?}");
+                            }
+                        },
+                        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue
+                        },
+                        Err(e) => {
+                            println!("Error peeking tcp stream for full msg: {e:#?}");
+                            continue
+                        }
+                    }
+                },
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    // no data, so don't wait around for it to come
+                    continue
+                },
+                Err(e) => {
+                    println!("Error peeking tcp stream for header: {e:#?}");
+                    continue
                 }
-            },
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                // no data, so don't wait around for it to come
-                continue
-            },
-            Err(e) => {
-                println!("Error peeking tcp stream for header: {e:#?}");
-                continue
             }
         }
     }
 
-    // Second pass, send out ack messages to all relevant streams
-    for msg in outgoing_acks {
-        for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
-            if *stream_type == TcpStreamType::Read {
-                // don't send out ack on readonly stream
-                continue
-            }
-
-            stream.write(&msg.to_network()).expect("Couldn't send ack");
-        }
-    }
+    send_msgs_to_all_peers(outgoing_acks, p2p_streams.clone());
 }
 
 fn send_broadcast(
@@ -396,23 +388,11 @@ fn listen_for_broadcasts(
     }
 }
 
-#[tauri::command]
-pub fn cmd_send_text(
-    msg: &str,
-    conn: State<ConnectionState>,
-    profile: State<ProfileState>,
+fn send_msgs_to_all_peers(
+    msgs: Vec<Message>, 
+    streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>
 ) {
-    let profile = profile.profile.lock().unwrap();
-
-    let msg = Message::Text(MessageData::new(
-        profile.name.clone(),
-        profile.uid,
-        utilities::gen_rand_id(),
-        utilities::get_curr_time(),
-        msg.as_bytes().to_vec()
-    ));
-
-    let mut p2p_streams = conn.p2p_streams.lock().unwrap();
+    let mut p2p_streams = streams.lock().unwrap();
 
     for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
         if *stream_type == TcpStreamType::Read {
@@ -420,8 +400,43 @@ pub fn cmd_send_text(
             continue
         }
 
-        if let Err(e) = stream.write(&msg.to_network()) {
-            println!("Error writing text msg to {}: {:#?}", stream.peer_addr().unwrap(), e);
-        };
+        for msg in &msgs {
+            let msg_network = &msg.to_network();
+            let expected_bytes = msg_network.len();
+
+            let stream_valid = match stream.write(msg_network) {
+                Ok(bytes_written) => bytes_written == expected_bytes,
+                Err(e) => {
+                    println!("Error writing to stream: {e:#?}");
+                    false
+                },
+            };
+
+            if !stream_valid {
+                // Need to remove the stream
+            }
+        }
     }
+}
+
+#[tauri::command]
+pub fn cmd_send_text(
+    msg: &str,
+    conn: State<ConnectionState>,
+    profile: State<ProfileState>,
+) {
+    let (name, uid) = {
+        let profile = profile.profile.lock().unwrap();
+        (profile.name.clone(), profile.uid)
+    };
+
+    let msg = Message::Text(MessageData::new(
+        name,
+        uid,
+        utilities::gen_rand_id(),
+        utilities::get_curr_time(),
+        msg.as_bytes().to_vec()
+    ));
+
+    send_msgs_to_all_peers(vec![msg], conn.p2p_streams.clone());
 }
