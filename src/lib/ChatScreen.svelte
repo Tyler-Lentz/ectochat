@@ -3,9 +3,10 @@
     import type { Message } from "$lib/bindings/Message";
 	import { msg_history, profile } from "$lib/stores";
 	import InputBox from "$lib/InputBox.svelte";
-    import { appWindow, currentMonitor } from "@tauri-apps/api/window";
+    import { appWindow } from "@tauri-apps/api/window";
     import { invoke } from "@tauri-apps/api";
     import type { KnownUsers } from "$lib/bindings/KnownUsers";
+	import HelloBox from "./HelloBox.svelte";
 
     let rec_messages: HTMLElement;
 
@@ -49,6 +50,8 @@
         {name: string, uid: string}[]
     > = new Map();
 
+    let uid_to_pic: Map<number, number[]> = new Map();
+
     msg_history.subscribe((new_hist) => {
         // Pull out list of UIDS of users that have acked this Message
         // If User is in anonymous mode, it will be a string that says "Anonymous"
@@ -73,11 +76,15 @@
                                 curr_ack_list.concat({name: "Anonymous", uid: "N/A"})
                             );    
                         }  else {
-                            const name = known_users.uid_to_name[msg.Ack.uid];
+                            const name = known_users.uid_to_profile[msg.Ack.uid].name;
                             mid_to_acks.set(
                                 msg.Ack.mid, 
                                 curr_ack_list.concat({name: name, uid: msg.Ack.uid.toString(16)})
                             );
+                        }
+                    } else if ("Hello" in msg) {
+                        if (!uid_to_pic.has(msg.Hello.uid)) {
+                            uid_to_pic.set(msg.Hello.uid, msg.Hello.payload);
                         }
                     }
                 });
@@ -89,10 +96,19 @@
 <main>
     <section id="rec-messages" bind:this={rec_messages}>
         {#each $msg_history as msg}
-            {#if "Text" in msg}
+            {#if "Hello" in msg}
+                {#if msg.Hello.uid != $profile?.uid}
+                    <div>
+                        <HelloBox 
+                            data={msg.Hello}
+                            />
+                    </div>
+                {/if}
+            {:else if "Text" in msg}
                 <div>
                     <MessageBox
                         data={msg.Text}
+                        pic={uid_to_pic.get(msg.Text.uid) || []}
                         acks={mid_to_acks.get(msg.Text.mid) || []} 
                         />
                 </div>

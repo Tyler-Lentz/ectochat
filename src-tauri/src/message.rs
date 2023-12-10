@@ -59,7 +59,7 @@ impl Message {
 
     pub fn get_type_str(&self) -> &str {
         match self {
-            Self::Ack { uid, mid } => "Ack",
+            Self::Ack { uid:_, mid:_ } => "Ack",
             Self::Broadcast(_) => "Broadcast",
             Self::Hello(_) => "Hello",
             Self::Image(_) => "Image",

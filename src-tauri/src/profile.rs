@@ -51,6 +51,7 @@ pub fn cmd_personalize_new_profile(
     profile_state: State<ProfileState>, 
     conn: State<ConnectionState>,
     msg_history: State<MessageHistory>,
+    known_users_state: State<KnownUsersState>,
     window: tauri::Window,
 ) -> Profile {
     // Update the profile with the profile options the user is allowed
@@ -74,6 +75,7 @@ pub fn cmd_personalize_new_profile(
         window, 
         profile_state.profile.clone(),
         msg_history.msgs.clone(),
+        known_users_state.users.clone(),
     );
 
     profile.clone()

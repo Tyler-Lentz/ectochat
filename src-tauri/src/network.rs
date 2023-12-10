@@ -1,6 +1,6 @@
-use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr, SocketAddrV4}, sync::{Mutex, Arc}, thread, time::Duration, collections::HashSet, io::{Write, Read}};
+use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr}, sync::{Mutex, Arc}, time::Duration, collections::HashSet, io::{Write, Read}};
 use tauri::{State, async_runtime};
-use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{KnownUsersState, gen_rand_id, get_curr_time}, profile::Profile};
+use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::KnownUsers, profile::Profile};
 use crate::profile::ProfileState;
 use crate::utilities;
 
@@ -9,7 +9,8 @@ const BROADCAST_PORT: &str = "59813";
 const MIN_P2P_PORT: u16 = 61000;
 const MAX_P2P_PORT: u16 = 61255;
 
-const SLEEP_TIME: u64 = 100;
+const SLEEP_TIME: u64 = 100; // wait 100ms between tcp listener code
+const BROADCAST_SLEEP_TIME: u64 = 200; // wait 200ms between broadcast code
 
 #[derive(PartialEq)]
 enum TcpStreamType {
@@ -58,52 +59,74 @@ impl ConnectionState {
         window: tauri::Window,
         profile: Arc<Mutex<Profile>>,
         msg_history: Arc<Mutex<Vec<Message>>>,
+        known_users: Arc<Mutex<KnownUsers>>,
     ) {
         {
             let p2p_streams = self.p2p_streams.clone();
-            let broadcast_socket = self.broadcast_socket.clone();
             let profile = profile.clone();
             let window = window.clone();
+            let msg_history = msg_history.clone();
+            let known_users = known_users.clone();
 
             async_runtime::spawn(async move {
                 loop {
-                    manage_p2p_connections(window.clone(), msg_history.clone(), p2p_streams.clone());
+                    manage_p2p_connections(
+                        window.clone(),
+                        msg_history.clone(), 
+                        p2p_streams.clone(), 
+                        known_users.clone(),
+                        profile.clone(),
+                    );
                     tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
                 }
             });
+        }
 
+        {
+            let broadcast_socket = self.broadcast_socket.clone();
+            let profile = profile.clone();
 
             async_runtime::spawn(async move {
                 loop {
                     send_broadcast(profile.clone(), broadcast_socket.clone());
-                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+                    tokio::time::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME)).await;
                 }
             });
         }
 
         {
-            let p2p_streams = self.p2p_streams.clone();
-            let p2p_ips = self.p2p_ips.clone();
+            let profile = profile.clone();
             let broadcast_socket = self.broadcast_socket.clone();
-            let profile = profile.clone();
+            let p2p_ips = self.p2p_ips.clone();
+            let p2p_streams = self.p2p_streams.clone();
 
             async_runtime::spawn(async move {
                 loop {
-                    listen_for_broadcasts(profile.clone(), broadcast_socket.clone(),  p2p_ips.clone(), p2p_streams.clone());
-                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+                    listen_for_broadcasts(
+                        profile.clone(), 
+                        broadcast_socket.clone(),  
+                        p2p_ips.clone(), 
+                        p2p_streams.clone()
+                    );
+                    tokio::time::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME)).await;
                 }
             });
         }
 
         {
-            let p2p_streams = self.p2p_streams.clone();
-            let p2p_ips = self.p2p_ips.clone();
-            let p2p_listeners = self.p2p_listeners.clone();
             let profile = profile.clone();
+            let p2p_listeners = self.p2p_listeners.clone();
+            let p2p_ips = self.p2p_ips.clone();
+            let p2p_streams = self.p2p_streams.clone();
 
             async_runtime::spawn(async move {
                 loop {
-                    listen_for_p2p_connections(profile.clone(), p2p_listeners.clone(), p2p_ips.clone(), p2p_streams.clone());
+                    listen_for_p2p_connections(
+                        profile.clone(), 
+                        p2p_listeners.clone(), 
+                        p2p_ips.clone(), 
+                        p2p_streams.clone()
+                    );
                     tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
                 }
             });
@@ -115,7 +138,11 @@ fn manage_p2p_connections(
     window: tauri::Window,
     msg_history: Arc<Mutex<Vec<Message>>>,
     p2p_streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>,
+    known_users: Arc<Mutex<KnownUsers>>,
+    profile: Arc<Mutex<Profile>>,
 ) {
+    let mut outgoing_acks: Vec<Message> = vec![];
+
     let mut p2p_streams = p2p_streams.lock().unwrap();
     for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
         if *stream_type == TcpStreamType::Write {
@@ -158,6 +185,55 @@ fn manage_p2p_connections(
                             msg_history.push(rec_msg.clone());
                         }
 
+                        // Record profile if it is a new connection established
+                        {
+                            match &rec_msg {
+                                Message::Hello(data) => {
+                                // If this is a greeting from a new peer/user, we need to record their
+                                // information so we can poll it later
+                                    let mut known_users = known_users.lock().unwrap();
+                                    known_users.uid_to_profile.insert(data.uid,
+                                        Profile { 
+                                            name: data.name.clone(),
+                                            uid: data.uid, 
+                                            join_time: data.timestamp, 
+                                            pic: data.payload.clone(),
+                                        }
+                                    );
+                                },
+                                _ => {},
+                            }
+                        }
+
+                        // Send ack msg back
+                        {
+                            match &rec_msg {
+                                Message::Image(data) |
+                                Message::Text(data)  => {
+                                    // If from self, don't ACK
+                                    let uid = {
+                                        profile.lock().unwrap().uid
+                                    };
+
+                                    if data.uid != uid {
+                                        // Send back Ack
+                                        let ack_msg = Message::Ack{
+                                            uid: uid,
+                                            mid: data.mid,
+                                        };
+
+                                        outgoing_acks.push(ack_msg);
+                                    }
+                                },
+                                // don't care about hello or broadcast msg, 
+                                // also, more importantly, don't want to ack acks
+                                // because that would create an infinite loop of
+                                // packets bouncing across the network 
+                                _ => {} 
+                            }
+                        }
+
+
                         // send msg to frontend
                         let res = window.emit("evt_new_msg", rec_msg);
                         if let Err(e) = res {
@@ -181,6 +257,18 @@ fn manage_p2p_connections(
                 println!("Error peeking tcp stream for header: {e:#?}");
                 continue
             }
+        }
+    }
+
+    // Second pass, send out ack messages to all relevant streams
+    for msg in outgoing_acks {
+        for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
+            if *stream_type == TcpStreamType::Read {
+                // don't send out ack on readonly stream
+                continue
+            }
+
+            stream.write(&msg.to_network()).expect("Couldn't send ack");
         }
     }
 }
@@ -212,7 +300,14 @@ fn listen_for_p2p_connections(
                         // keep track that we have an active connection with this ip
                         p2p_ips.insert(peer_ip); 
                     }
-                    {
+
+                    let stream_type = if is_localhost_stream(&stream) {
+                        TcpStreamType::Read
+                    } else {
+                        TcpStreamType::Both
+                    };
+
+                    if stream_type == TcpStreamType::Both { // only send hello if this isn't localhost
                         let profile = profile.lock().unwrap();
                         // Send initial hello msg
                         if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
@@ -221,12 +316,6 @@ fn listen_for_p2p_connections(
                     }
                     {
                         let mut p2p_streams = p2p_streams.lock().unwrap();
-
-                        let stream_type = if is_localhost_stream(&stream) {
-                            TcpStreamType::Read
-                        } else {
-                            TcpStreamType::Both
-                        };
                         // add stream so we start doing listening on it
                         p2p_streams.push((stream_type, stream)); 
                     }
