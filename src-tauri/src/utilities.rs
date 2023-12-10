@@ -3,6 +3,8 @@ use tauri::State;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
+use crate::profile::Profile;
+
 pub fn gen_rand_id() -> u32 {
     rand::random()
 }
@@ -18,30 +20,30 @@ pub fn get_curr_time() -> u64 {
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct KnownUsers {
-    pub uid_to_name: HashMap<u32, String>,
+    pub uid_to_profile: HashMap<u32, Profile>,
 }
 
 impl KnownUsers {
     pub fn new() -> Self {
         KnownUsers {
-            uid_to_name: HashMap::new()
+            uid_to_profile: HashMap::new()
         }
     }
 }
 
 pub struct KnownUsersState {
     // Map that stores uids and associates with usernames
-    pub map: Arc<Mutex<KnownUsers>>,
+    pub users: Arc<Mutex<KnownUsers>>,
 }
 
 impl KnownUsersState {
     pub fn new() -> Self {
-        KnownUsersState { map: Arc::new(Mutex::new(KnownUsers::new())) }
+        KnownUsersState { users: Arc::new(Mutex::new(KnownUsers::new())) }
     }
 }
 
 #[tauri::command]
 pub fn cmd_get_known_users(known_users: State<KnownUsersState>) -> KnownUsers {
-    let map = known_users.map.lock().unwrap();
+    let map = known_users.users.lock().unwrap();
     map.clone()
 }

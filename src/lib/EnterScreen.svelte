@@ -70,6 +70,7 @@
 
     h1 {
         font-size: 4rem;
+        text-align: center;
     }
 
     form {

@@ -9,17 +9,23 @@
     import AckModal from '$lib/AckModal.svelte';
 	import { writable, type Writable } from "svelte/store";
 
-
     let canvas: Canvas;
     export let data: MessageData;
+    export let pic: number[]
 
     onMount(() => {
-        let imageData = new ImageData(
-            new Uint8ClampedArray(data.pic),
-            PROFILE_PIC_SIZE, 
-            PROFILE_PIC_SIZE 
-        );
-        canvas.setImageData(imageData);
+        if (pic.length > 0) {
+            try {
+                let imageData = new ImageData(
+                    new Uint8ClampedArray(pic),
+                    PROFILE_PIC_SIZE, 
+                    PROFILE_PIC_SIZE 
+                );
+                canvas.setImageData(imageData);
+            } catch(e) {
+                console.error(e);
+            }
+        }
     });
 
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
