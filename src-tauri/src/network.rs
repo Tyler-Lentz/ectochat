@@ -1,11 +1,13 @@
 use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr}, sync::{Mutex, Arc}, time::Duration, collections::HashSet, io::{Write, Read}};
 use tauri::{State, async_runtime};
-use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::KnownUsers, profile::Profile};
+use const_format::formatcp;
+use crate::{message::{Message, MessageData, HEADER_LEN, MessageHistory}, utilities::KnownUsers, profile::Profile};
 use crate::profile::ProfileState;
 use crate::utilities;
 
-const BROADCAST_ADDR: &str = "255.255.255.255";
+const BROADCAST_IP: &str = "255.255.255.255";
 const BROADCAST_PORT: &str = "59813";
+const BROADCAST_ADDR: &str = formatcp!("{BROADCAST_IP}:{BROADCAST_PORT}");
 const MIN_P2P_PORT: u16 = 61000;
 const MAX_P2P_PORT: u16 = 61255;
 
@@ -19,7 +21,14 @@ enum TcpStreamType {
     Both,
 }
 
+struct PeerConnection {
+    stream: TcpStream,
+    stream_type: TcpStreamType,
+    peer_profile: Profile, 
+}
+
 fn is_localhost_stream(stream: &TcpStream) -> bool {
+    // TODO: remove unsafe unwrap calls
     stream.peer_addr().unwrap().ip() == stream.local_addr().unwrap().ip()
 }
 
@@ -262,16 +271,25 @@ fn manage_p2p_connections(
         }
     }
 
-    send_msgs_to_all_peers(outgoing_acks, p2p_streams.clone());
+    send_msgs_to_all_peers(outgoing_acks, p2p_streams.clone(), msg_history.clone());
 }
 
 fn send_broadcast(
     profile: Arc<Mutex<Profile>>,
     broadcast_socket: Arc<Mutex<UdpSocket>>,
 ) {
-    broadcast_socket.lock().unwrap()
-        .send_to(&Message::Broadcast(profile.lock().unwrap().uid).to_network(), format!("{BROADCAST_ADDR}:{BROADCAST_PORT}"))
-        .expect("Couldn't send msg");
+    let msg = Message::Broadcast(profile.lock().unwrap().uid).to_network();
+
+    match broadcast_socket.lock().unwrap().send_to(&msg, BROADCAST_ADDR) {
+        Ok(bytes_written) => {
+            if bytes_written != msg.len() {
+                println!("Error: could not send entire broadcast message");
+            }
+        },
+        Err(e) => {
+            println!("Error sending broadcast: {e:#?}");
+        },
+    }
 }
 
 fn listen_for_p2p_connections(
@@ -390,14 +408,12 @@ fn listen_for_broadcasts(
 
 fn send_msgs_to_all_peers(
     msgs: Vec<Message>, 
-    streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>
+    streams: Arc<Mutex<Vec<(TcpStreamType, TcpStream)>>>,
+    msg_history: Arc<Mutex<Vec<Message>>>,
 ) {
-    let mut p2p_streams = streams.lock().unwrap();
-
-    for (stream_type, ref mut stream) in p2p_streams.iter_mut() {
+    streams.lock().unwrap().retain_mut(|(stream_type, ref mut stream)| {
         if *stream_type == TcpStreamType::Read {
-            // if the channel should be only used for read, then dont write to it
-            continue
+            return true; // keep but don't do anything
         }
 
         for msg in &msgs {
@@ -406,17 +422,19 @@ fn send_msgs_to_all_peers(
 
             let stream_valid = match stream.write(msg_network) {
                 Ok(bytes_written) => bytes_written == expected_bytes,
-                Err(e) => {
-                    println!("Error writing to stream: {e:#?}");
-                    false
-                },
+                Err(_) => false,
             };
 
             if !stream_valid {
-                // Need to remove the stream
+                msg_history.lock().unwrap().push(Message::Goodbye(MessageData::new(
+
+                )));
+                return false; // remove from list, so connection will be dropped
             }
         }
-    }
+
+        true
+    });
 }
 
 #[tauri::command]
@@ -424,6 +442,7 @@ pub fn cmd_send_text(
     msg: &str,
     conn: State<ConnectionState>,
     profile: State<ProfileState>,
+    msg_history: State<MessageHistory>,
 ) {
     let (name, uid) = {
         let profile = profile.profile.lock().unwrap();
@@ -438,5 +457,5 @@ pub fn cmd_send_text(
         msg.as_bytes().to_vec()
     ));
 
-    send_msgs_to_all_peers(vec![msg], conn.p2p_streams.clone());
+    send_msgs_to_all_peers(vec![msg], conn.p2p_streams.clone(), msg_history.msgs.clone());
 }

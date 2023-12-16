@@ -1,6 +1,5 @@
 use std::io::Write;
 use std::sync::{Arc, Mutex};
-use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 use std::io::prelude::*;
@@ -22,7 +21,13 @@ pub enum Message {
 
     // Message sent in response to broadcast, over tcp,
     // to establish TCP connection
+    // Payload is the profile picture
     Hello(MessageData),
+
+    // Message sent when app is closed to all peers, or manufactured
+    // by backend if tcp stream fails
+    // Payload is the profile picture
+    Goodbye(MessageData),
 
     // Messages sent p2p over tcp streams, actual data
     // sent via chat
@@ -62,6 +67,7 @@ impl Message {
             Self::Ack { uid:_, mid:_ } => "Ack",
             Self::Broadcast(_) => "Broadcast",
             Self::Hello(_) => "Hello",
+            Self::Goodbye(_) => "Goodbye",
             Self::Image(_) => "Image",
             Self::Text(_) => "Text",
         }
