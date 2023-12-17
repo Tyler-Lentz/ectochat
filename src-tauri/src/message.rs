@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::sync::{Arc, Mutex};
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 use std::io::prelude::*;
@@ -43,7 +42,7 @@ impl Message {
     pub fn to_network(&self) -> Vec<u8> {
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         if let Err(err) = e.write_all(serde_json::to_string(&self).unwrap().as_bytes()) {
-            println!("{err}");
+            log::error!("{err}");
         }
         let message_bytes = e.finish().unwrap();
         
@@ -90,17 +89,5 @@ pub struct MessageData {
 impl MessageData {
     pub fn new(name: String, uid: u32, mid: u32, timestamp: u64, payload: Vec<u8> ) -> MessageData {
         MessageData { name, uid, mid, timestamp, payload }
-    }
-}
-
-pub struct MessageHistory {
-    pub msgs: Arc<Mutex<Vec<Message>>>,
-}
-
-impl MessageHistory {
-    pub fn new() -> MessageHistory {
-        MessageHistory {
-            msgs: Arc::new(Mutex::new(Vec::new())),
-        }
     }
 }

@@ -1,9 +1,9 @@
 use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr}, sync::{Mutex, Arc}, time::Duration, collections::HashSet, io::{Write, Read}};
-use tauri::{State, async_runtime};
+use tauri::{State, async_runtime, Manager};
 use const_format::formatcp;
-use crate::{message::{Message, MessageData, HEADER_LEN, MessageHistory}, utilities::{KnownUsers, gen_rand_id, get_curr_time, send_msg_to_frontend}, profile::Profile};
-use crate::profile::ProfileState;
+use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{gen_rand_id, get_curr_time, send_msg_to_frontend}, profile::Profile};
 use crate::utilities;
+use crate::AppState;
 
 const BROADCAST_IP: &str = "255.255.255.255";
 const BROADCAST_PORT: &str = "59813";
@@ -33,9 +33,10 @@ impl PeerConnection {
     fn new(stream: TcpStream, stream_type: TcpStreamType) -> Self {
         let peer_addr = stream.peer_addr().unwrap();
         let local_addr = stream.local_addr().unwrap();
+
+        log::info!("Successfully made tcp stream to {}", peer_addr.ip());
         Self { stream, stream_type, peer_profile: None, peer_addr, local_addr }
     }
-
 }
 
 fn is_localhost_stream(stream: &TcpStream) -> bool {
@@ -43,10 +44,12 @@ fn is_localhost_stream(stream: &TcpStream) -> bool {
 }
 
 pub struct ConnectionState {
-    pub broadcast_socket: Arc<Mutex<UdpSocket>>,
-    pub p2p_connections: Arc<Mutex<Vec<PeerConnection>>>,
-    pub p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    pub p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
+    broadcast_socket: Arc<Mutex<UdpSocket>>,
+    p2p_connections: Arc<Mutex<Vec<PeerConnection>>>,
+    p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
+    p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
+
+    active: Arc<Mutex<bool>>,
 }
 
 impl ConnectionState {
@@ -70,105 +73,51 @@ impl ConnectionState {
             p2p_connections: Arc::new(Mutex::new(Vec::new())),
             p2p_ips: Arc::new(Mutex::new(HashSet::new())),
             p2p_listeners: Arc::new(Mutex::new(listeners)),
+            active: Arc::new(Mutex::new(false)),
         }
     }
 
-    pub fn manage_connections(
-        &self,
-        window: tauri::Window,
-        profile: Arc<Mutex<Profile>>,
-        msg_history: Arc<Mutex<Vec<Message>>>,
-        known_users: Arc<Mutex<KnownUsers>>,
-    ) {
-        {
-            let p2p_connections = self.p2p_connections.clone();
-            let p2p_ips = self.p2p_ips.clone();
-            let profile = profile.clone();
-            let window = window.clone();
-            let msg_history = msg_history.clone();
-            let known_users = known_users.clone();
-
-            async_runtime::spawn(async move {
-                loop {
-                    manage_p2p_connections(
-                        window.clone(),
-                        msg_history.clone(), 
-                        p2p_connections.clone(), 
-                        p2p_ips.clone(),
-                        known_users.clone(),
-                        profile.clone(),
-                    );
-                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
-                }
-            });
-        }
-
-        {
-            let broadcast_socket = self.broadcast_socket.clone();
-            let profile = profile.clone();
-
-            async_runtime::spawn(async move {
-                loop {
-                    send_broadcast(profile.clone(), broadcast_socket.clone());
-                    tokio::time::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME)).await;
-                }
-            });
-        }
-
-        {
-            let profile = profile.clone();
-            let broadcast_socket = self.broadcast_socket.clone();
-            let p2p_ips = self.p2p_ips.clone();
-            let p2p_connections = self.p2p_connections.clone();
-
-            async_runtime::spawn(async move {
-                loop {
-                    listen_for_broadcasts(
-                        profile.clone(), 
-                        broadcast_socket.clone(),  
-                        p2p_ips.clone(), 
-                        p2p_connections.clone()
-                    );
-                    tokio::time::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME)).await;
-                }
-            });
-        }
-
-        {
-            let profile = profile.clone();
-            let p2p_listeners = self.p2p_listeners.clone();
-            let p2p_ips = self.p2p_ips.clone();
-            let p2p_connections = self.p2p_connections.clone();
-
-            async_runtime::spawn(async move {
-                loop {
-                    listen_for_p2p_connections(
-                        profile.clone(), 
-                        p2p_listeners.clone(), 
-                        p2p_ips.clone(), 
-                        p2p_connections.clone()
-                    );
-                    tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
-                }
-            });
-        }
+    pub fn set_active(&self, val: bool) {
+        *self.active.lock().unwrap() = val;
     }
 }
 
-fn manage_p2p_connections(
-    window: tauri::Window,
-    msg_history: Arc<Mutex<Vec<Message>>>,
-    p2p_connections: Arc<Mutex<Vec<PeerConnection>>>,
-    p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    known_users: Arc<Mutex<KnownUsers>>,
-    profile: Arc<Mutex<Profile>>,
-) {
+pub fn run_background_threads(window: tauri::Window) {
+    let state: State<AppState> = window.state();
+
+    let active = state.connection.active.clone();
+    let w1 = window.clone();
+    async_runtime::spawn(async move {
+        loop {
+            if *active.lock().unwrap() {
+                manage_p2p_connections(&w1);
+                listen_for_p2p_connections(&w1);
+            }
+            tokio::time::sleep(Duration::from_millis(SLEEP_TIME)).await;
+        }
+    });
+
+    let active = state.connection.active.clone();
+    let w2 = window.clone();
+    async_runtime::spawn(async move {
+        loop {
+            if *active.lock().unwrap() {
+                send_broadcast(&w2);
+                listen_for_broadcasts(&w2);
+            }
+            tokio::time::sleep(Duration::from_millis(BROADCAST_SLEEP_TIME)).await;
+        }
+    });
+}
+
+fn manage_p2p_connections(window: &tauri::Window) {
+    let state: State<AppState> = window.state();
+
     let mut outgoing_acks: Vec<Message> = vec![];
-    let mut killed_connections: HashSet<SocketAddr> = HashSet::new(); // kill connections with this uid
-    // TODO: change killed connections to do it off of the IP in the peer connection instead of uid
+    let mut killed_connections: HashSet<SocketAddr> = HashSet::new();
 
     {
-        let mut p2p_connections = p2p_connections.lock().unwrap();
+        let mut p2p_connections = state.connection.p2p_connections.lock().unwrap();
         for connection in p2p_connections.iter_mut() {
             if connection.stream_type == TcpStreamType::Write {
                 // If this stream should only be used for writing, skip
@@ -180,7 +129,7 @@ fn manage_p2p_connections(
             match connection.stream.peek(&mut buf) {
                 Ok(num_bytes_read) => {
                     if num_bytes_read < HEADER_LEN{
-                        // not enough bytes on the wire for entire header, so stop
+                        log::trace!("Only {num_bytes_read} on the wire, so not enough for header. Skipping.");
                         continue
                     }
 
@@ -190,7 +139,7 @@ fn manage_p2p_connections(
                     match connection.stream.peek(&mut full_msg_buf) {
                         Ok(num_bytes_read) => {
                             if num_bytes_read < full_msg_len {
-                                // Full message is not there yet
+                                log::trace!("Only {num_bytes_read} bytes on the wire, when expecting {full_msg_len}. Skipping.");
                                 continue
                             }
 
@@ -202,11 +151,11 @@ fn manage_p2p_connections(
                             // pull out the bytes we used from the buffer
                             let _ = connection.stream.read_exact(&mut full_msg_buf);
 
-                            println!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), connection.stream.peer_addr().unwrap());
+                            log::info!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), connection.stream.peer_addr().unwrap());
 
                             // add to msg history
                             {
-                                let mut msg_history = msg_history.lock().unwrap();
+                                let mut msg_history = state.msg_history.lock().unwrap();
                                 msg_history.push(rec_msg.clone());
                             }
 
@@ -216,14 +165,15 @@ fn manage_p2p_connections(
                                     Message::Hello(data) => {
                                     // If this is a greeting from a new peer/user, we need to record their
                                     // information so we can poll it later
-                                        let mut known_users = known_users.lock().unwrap();
+                                        let mut known_users = state.known_users.lock().unwrap();
                                         let rec_profile = Profile {
                                             name: data.name.clone(),
                                             uid: data.uid, 
                                             join_time: data.timestamp, 
                                             pic: data.payload.clone(),
                                         };
-                                        known_users.uid_to_profile.insert(data.uid, rec_profile.clone());
+                                        log::info!("Adding {} to known users.", rec_profile.name);
+                                        known_users.add_user(rec_profile.clone());
 
                                         // also add profile information to the connection
                                         connection.peer_profile = Some(rec_profile);
@@ -231,6 +181,7 @@ fn manage_p2p_connections(
                                     Message::Goodbye(_) => {
                                         // This peer is going to be shutting down soon, so we should
                                         // clean up their connection status
+                                        log::info!("Goodbye received from {}", connection.peer_addr);
                                         killed_connections.insert(connection.peer_addr);
                                     },
                                     _ => {},
@@ -244,7 +195,7 @@ fn manage_p2p_connections(
                                     Message::Text(data)  => {
                                         // If from self, don't ACK
                                         let uid = {
-                                            profile.lock().unwrap().uid
+                                            state.profile.lock().unwrap().uid
                                         };
 
                                         if data.uid != uid {
@@ -271,7 +222,7 @@ fn manage_p2p_connections(
                             continue
                         },
                         Err(e) => {
-                            println!("Error peeking tcp stream for full msg: {e:#?}");
+                            log::error!("Error peeking tcp stream for full msg: {e:#?}");
                             continue
                         }
                     }
@@ -281,7 +232,7 @@ fn manage_p2p_connections(
                     continue
                 },
                 Err(e) => {
-                    println!("Error peeking tcp stream for header: {e:#?}");
+                    log::error!("Error peeking tcp stream for header: {e:#?}");
                     continue
                 }
             }
@@ -293,47 +244,44 @@ fn manage_p2p_connections(
         });
 
         // Remove from set of IPs we're talking to
-        let mut p2p_ips = p2p_ips.lock().unwrap();
+        let mut p2p_ips = state.connection.p2p_ips.lock().unwrap();
         for peer_addr in killed_connections {
+            log::trace!("Removing ips from set: {}", peer_addr.ip());
             p2p_ips.remove(&peer_addr.ip());
         }
     }
 
-    send_msgs_to_all_peers(outgoing_acks, p2p_connections.clone(), msg_history.clone(), &window, p2p_ips.clone());
+    send_msgs_to_all_peers(outgoing_acks, window);
 }
 
-fn send_broadcast(
-    profile: Arc<Mutex<Profile>>,
-    broadcast_socket: Arc<Mutex<UdpSocket>>,
-) {
-    let msg = Message::Broadcast(profile.lock().unwrap().uid).to_network();
+fn send_broadcast(window: &tauri::Window) {
+    let state: State<AppState> = window.state();
 
-    match broadcast_socket.lock().unwrap().send_to(&msg, BROADCAST_ADDR) {
+    let msg = Message::Broadcast(state.profile.lock().unwrap().uid).to_network();
+
+    match state.connection.broadcast_socket.lock().unwrap().send_to(&msg, BROADCAST_ADDR) {
         Ok(bytes_written) => {
             if bytes_written != msg.len() {
-                println!("Error: could not send entire broadcast message");
+                log::error!("Error: could not send entire broadcast message");
             }
         },
         Err(e) => {
-            println!("Error sending broadcast: {e:#?}");
+            log::error!("Error sending broadcast: {e:#?}");
         },
-    }
+    };
 }
 
-fn listen_for_p2p_connections(
-    profile: Arc<Mutex<Profile>>,
-    p2p_listeners: Arc<Mutex<Vec<TcpListener>>>,
-    p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    p2p_connections: Arc<Mutex<Vec<PeerConnection>>>,
-) {
-    let p2p_listeners = p2p_listeners.lock().unwrap();
+fn listen_for_p2p_connections(window: &tauri::Window) {
+    let state: State<AppState> = window.state();
+
+    let p2p_listeners = state.connection.p2p_listeners.lock().unwrap();
     for listener in p2p_listeners.iter() {
         for stream in listener.incoming() {
             match stream {
                 Ok(mut stream) => {
                     let _ = stream.set_nonblocking(true);
                     {
-                        let mut p2p_ips = p2p_ips.lock().unwrap();
+                        let mut p2p_ips = state.connection.p2p_ips.lock().unwrap();
                         let peer_ip = stream.peer_addr().unwrap().ip();
                         // keep track that we have an active connection with this ip
                         p2p_ips.insert(peer_ip); 
@@ -342,17 +290,17 @@ fn listen_for_p2p_connections(
                     let stream_type = if is_localhost_stream(&stream) {
                         TcpStreamType::Read
                     } else {
-                        let profile = profile.lock().unwrap();
+                        let profile = state.profile.lock().unwrap();
                         // Send initial hello msg
                         if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
-                            println!("Error writing hello msg to listen stream: {e:#?}");
+                            log::error!("Error writing hello msg to listen stream: {e:#?}");
                         }
 
                         TcpStreamType::Both
                     };
 
                     {
-                        let mut p2p_streams = p2p_connections.lock().unwrap();
+                        let mut p2p_streams = state.connection.p2p_connections.lock().unwrap();
                         // add stream so we start doing listening on it
                         p2p_streams.push(PeerConnection::new(stream, stream_type)); 
                     }
@@ -360,46 +308,44 @@ fn listen_for_p2p_connections(
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     break;
                 },
-                Err(e) => println!("{e}"),
+                Err(e) => log::error!("{e}"),
             }
         }
     }
 }
 
-fn listen_for_broadcasts(
-    profile: Arc<Mutex<Profile>>,
-    broadcast_socket: Arc<Mutex<UdpSocket>>,
-    p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-    p2p_connections: Arc<Mutex<Vec<PeerConnection>>>,
-) {
-    let bcast_socket = broadcast_socket.lock().unwrap();
+fn listen_for_broadcasts(window: &tauri::Window) {
+    let state: State<AppState> = window.state();
+
+    let bcast_socket = state.connection.broadcast_socket.lock().unwrap();
     let mut buf = [0; 100]; // broadcast msgs will be tiny 
     match bcast_socket.recv_from(&mut buf) {
         Ok((_received, rec_saddr)) => {
             let rec_msg = Message::from_network(&buf);
             match &rec_msg {
                 Message::Broadcast(rec_uid) => {
-                    let profile = profile.lock().unwrap();
+                    let profile = state.profile.lock().unwrap();
                     if *rec_uid > profile.uid {
-                        // Their UID is larger, so listen for their TCP connection
-                        // Don't need to do anything here, stream will be established
-                        // in listen_to_p2p_connections
-
+                        log::trace!(
+                            "Received broadcast from uid={}. Their uid is greater, so waiting for them to establish a connection.",
+                            *rec_uid
+                        );
                         return 
                     }
                 },
                 _ => {
+                    log::warn!("Received non-broadcast msg on the udp socket: {buf:#?}");
                     return;
                 }
             }
 
-
             let ip = rec_saddr.ip();
             
-            let mut p2p_ips = p2p_ips.lock().unwrap();
+            let mut p2p_ips = state.connection.p2p_ips.lock().unwrap();
             if p2p_ips.contains(&ip) {
-                // do nothing
+                log::trace!("Already received broadcast from {ip}, so ignoring");
             } else {
+                log::trace!("New broadcast from {ip}, so attempting to establish connection.");
                 p2p_ips.insert(ip);
 
                 let possible_tcp_saddrs: Vec<SocketAddr> = (MIN_P2P_PORT..=MAX_P2P_PORT).map(|port| {
@@ -409,9 +355,9 @@ fn listen_for_broadcasts(
                     Ok(mut stream) => {
                         let _ = stream.set_nonblocking(true);
                         {
-                            let profile = profile.lock().unwrap(); 
+                            let profile = state.profile.lock().unwrap(); 
                             if let Err(e) = stream.write(&profile.make_hello_msg().to_network()) {
-                                println!("Error writing hello msg to connect stream: {e:#?}");
+                                log::error!("Error writing hello msg to connect stream: {e:#?}");
                             }
                         }
                         {
@@ -421,12 +367,12 @@ fn listen_for_broadcasts(
                                 TcpStreamType::Both
                             };
 
-                            let mut p2p_connections = p2p_connections.lock().unwrap();
+                            let mut p2p_connections = state.connection.p2p_connections.lock().unwrap();
                             p2p_connections.push(PeerConnection::new(stream, stream_type));
                         }
-                        println!("Successfully made tcp stream to {ip}");
                     },
-                    Err(_err) => {
+                    Err(err) => {
+                        log::error!("Error establishing connection with {ip}, so removing IP from set. {err}");
                         p2p_ips.remove(&ip);
                     },
                 }
@@ -436,14 +382,10 @@ fn listen_for_broadcasts(
     }
 }
 
-pub fn send_msgs_to_all_peers(
-    msgs: Vec<Message>, 
-    connections: Arc<Mutex<Vec<PeerConnection>>>,
-    msg_history: Arc<Mutex<Vec<Message>>>,
-    window: &tauri::Window,
-    p2p_ips: Arc<Mutex<HashSet<IpAddr>>>,
-) {
-    connections.lock().unwrap().retain_mut(|connection| {
+pub fn send_msgs_to_all_peers(msgs: Vec<Message>, window: &tauri::Window) {
+    let state: State<AppState> = window.state();
+
+    state.connection.p2p_connections.lock().unwrap().retain_mut(|connection| {
         if connection.stream_type == TcpStreamType::Read {
             return true; // keep but don't do anything
         }
@@ -469,10 +411,12 @@ pub fn send_msgs_to_all_peers(
                         profile.pic.clone(),
                     ));
 
-                    p2p_ips.lock().unwrap().remove(&connection.peer_addr.ip());
+                    state.connection.p2p_ips.lock().unwrap().remove(&connection.peer_addr.ip());
 
                     send_msg_to_frontend(&dropped_msg, window);
-                    msg_history.lock().unwrap().push(dropped_msg);
+                    state.msg_history.lock().unwrap().push(dropped_msg);
+
+                    log::warn!("Stream at {} no longer valid. Manufacturing drop message.", connection.peer_addr.ip());
                 }
                 return false; // remove from list, so connection will be dropped
             }
@@ -483,15 +427,9 @@ pub fn send_msgs_to_all_peers(
 }
 
 #[tauri::command]
-pub fn cmd_send_text(
-    msg: &str,
-    conn: State<ConnectionState>,
-    profile: State<ProfileState>,
-    msg_history: State<MessageHistory>,
-    window: tauri::Window,
-) {
+pub fn cmd_send_text(msg: &str, state: State<AppState>, window: tauri::Window) {
     let (name, uid) = {
-        let profile = profile.profile.lock().unwrap();
+        let profile = state.profile.lock().unwrap();
         (profile.name.clone(), profile.uid)
     };
 
@@ -503,5 +441,5 @@ pub fn cmd_send_text(
         msg.as_bytes().to_vec()
     ));
 
-    send_msgs_to_all_peers(vec![msg], conn.p2p_connections.clone(), msg_history.msgs.clone(), &window, conn.p2p_ips.clone());
+    send_msgs_to_all_peers(vec![msg], &window);
 }
