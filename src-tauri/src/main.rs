@@ -33,6 +33,7 @@ fn handle_window_event(event: tauri::GlobalWindowEvent) {
         tauri::WindowEvent::Destroyed => {
             let connection_state: State<ConnectionState> = event.window().state();
             let connections = connection_state.p2p_connections.clone();
+            let p2p_ips = connection_state.p2p_ips.clone();
 
             let msg_history_state: State<MessageHistory> = event.window().state();
             let msg_history = msg_history_state.msgs.clone();
@@ -49,7 +50,7 @@ fn handle_window_event(event: tauri::GlobalWindowEvent) {
                 profile.pic.clone(),
             ));
 
-            network::send_msgs_to_all_peers(vec![goodbye_msg], connections, msg_history, event.window());
+            network::send_msgs_to_all_peers(vec![goodbye_msg], connections, msg_history, event.window(), p2p_ips);
         },
         _ => {},
     }
