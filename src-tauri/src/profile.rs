@@ -1,11 +1,10 @@
-use std::sync::{Mutex, Arc};
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 use tauri::State;
 
-use crate::network::ConnectionState;
-use crate::utilities::{self, KnownUsersState, gen_rand_id, get_curr_time};
-use crate::message::{MessageHistory, Message, MessageData};
+use crate::AppState;
+use crate::utilities::{self, gen_rand_id, get_curr_time};
+use crate::message::{Message, MessageData};
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
 #[ts(export)]
@@ -38,26 +37,16 @@ impl Profile {
     }
 }
 
-fn generate_random_name() -> String {
-    // TODO: generate silly random name
-    // mayhap: https://crates.io/crates/random_name_generator
-    return String::from("unnamed");
-} 
-
 #[tauri::command]
 pub fn cmd_personalize_new_profile(
     new_name: &str,
     new_pic: &str, 
-    profile_state: State<ProfileState>, 
-    conn: State<ConnectionState>,
-    msg_history: State<MessageHistory>,
-    known_users_state: State<KnownUsersState>,
-    window: tauri::Window,
+    state: State<AppState>,
 ) -> Profile {
     // Update the profile with the profile options the user is allowed
     // to select.
 
-    let mut profile = profile_state.profile.lock().unwrap();
+    let mut profile = state.profile.lock().unwrap();
         
     if new_name != "" {
         profile.name = String::from(new_name);
@@ -71,24 +60,7 @@ pub fn cmd_personalize_new_profile(
         })
         .collect();
 
-    conn.manage_connections(
-        window, 
-        profile_state.profile.clone(),
-        msg_history.msgs.clone(),
-        known_users_state.users.clone(),
-    );
+    state.connection.set_active(true);
 
     profile.clone()
-}
-
-pub struct ProfileState {
-    pub profile: Arc<Mutex<Profile>>,
-}
-
-impl ProfileState {
-    pub fn new() -> ProfileState {
-        ProfileState {
-            profile: Arc::new(Mutex::new(Profile::new(generate_random_name())))
-        }
-    }
 }

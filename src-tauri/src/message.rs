@@ -1,6 +1,4 @@
 use std::io::Write;
-use std::sync::{Arc, Mutex};
-use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 use std::io::prelude::*;
@@ -22,7 +20,14 @@ pub enum Message {
 
     // Message sent in response to broadcast, over tcp,
     // to establish TCP connection
+    // Payload is the profile picture
     Hello(MessageData),
+
+    // Message sent when app is closed gracefully
+    Goodbye(MessageData),
+
+    // Message manufactured when connection with another peer is dropped
+    Dropped(MessageData),
 
     // Messages sent p2p over tcp streams, actual data
     // sent via chat
@@ -37,7 +42,7 @@ impl Message {
     pub fn to_network(&self) -> Vec<u8> {
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         if let Err(err) = e.write_all(serde_json::to_string(&self).unwrap().as_bytes()) {
-            println!("{err}");
+            log::error!("{err}");
         }
         let message_bytes = e.finish().unwrap();
         
@@ -62,6 +67,8 @@ impl Message {
             Self::Ack { uid:_, mid:_ } => "Ack",
             Self::Broadcast(_) => "Broadcast",
             Self::Hello(_) => "Hello",
+            Self::Goodbye(_) => "Goodbye",
+            Self::Dropped(_) => "Dropped",
             Self::Image(_) => "Image",
             Self::Text(_) => "Text",
         }
@@ -82,17 +89,5 @@ pub struct MessageData {
 impl MessageData {
     pub fn new(name: String, uid: u32, mid: u32, timestamp: u64, payload: Vec<u8> ) -> MessageData {
         MessageData { name, uid, mid, timestamp, payload }
-    }
-}
-
-pub struct MessageHistory {
-    pub msgs: Arc<Mutex<Vec<Message>>>,
-}
-
-impl MessageHistory {
-    pub fn new() -> MessageHistory {
-        MessageHistory {
-            msgs: Arc::new(Mutex::new(Vec::new())),
-        }
     }
 }

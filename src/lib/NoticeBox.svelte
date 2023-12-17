@@ -4,7 +4,12 @@
 	import Canvas from "$lib/Canvas.svelte";
 	import { PROFILE_PIC_SIZE } from "$lib/contants";
 
+    // TODO: refactor this because i hate this exported interface 
+    // and how rigid it is
+
     export let data: MessageData;
+    export let msg1: string; // is followed by the name/uid found in data
+    export let msg2: string; // follows the name.uid found in data
 
     let canvas: Canvas;
     onMount(() => {
@@ -25,8 +30,9 @@
 
 <div class="container">
     <p>
-        A connection has been established with 
+        {msg1}
         <span id="name">{data.name}</span> <span id="uid">({data.uid.toString(16)})</span>
+        {msg2}
     </p>
     <Canvas 
         bind:this={canvas} 

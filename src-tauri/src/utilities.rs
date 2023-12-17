@@ -1,9 +1,10 @@
-use std::{time::{SystemTime, UNIX_EPOCH}, collections::HashMap, sync::{Mutex, Arc}};
+use std::{time::{SystemTime, UNIX_EPOCH}, collections::HashMap};
 use tauri::State;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
-use crate::profile::Profile;
+use crate::{profile::Profile, AppState};
+use crate::message::Message;
 
 pub fn gen_rand_id() -> u32 {
     rand::random()
@@ -16,11 +17,18 @@ pub fn get_curr_time() -> u64 {
     }
 }
 
+pub fn send_msg_to_frontend(msg: &Message, window: &tauri::Window) {
+    let res = window.emit("evt_new_msg", msg);
+    if let Err(e) = res {
+        log::error!("evt_new_msg err {e:#?}");
+    }
+}
+
 #[derive(TS, Serialize, Deserialize, Clone)]
 #[ts(export)]
 #[ts(export_to="../src/lib/bindings/")]
 pub struct KnownUsers {
-    pub uid_to_profile: HashMap<u32, Profile>,
+    uid_to_profile: HashMap<u32, Profile>,
 }
 
 impl KnownUsers {
@@ -29,21 +37,21 @@ impl KnownUsers {
             uid_to_profile: HashMap::new()
         }
     }
-}
 
-pub struct KnownUsersState {
-    // Map that stores uids and associates with usernames
-    pub users: Arc<Mutex<KnownUsers>>,
-}
+    pub fn add_user(&mut self, prof: Profile) {
+        self.uid_to_profile.insert(prof.uid, prof);
+    }
 
-impl KnownUsersState {
-    pub fn new() -> Self {
-        KnownUsersState { users: Arc::new(Mutex::new(KnownUsers::new())) }
+    pub fn does_user_exist(&self, uid: u32) -> bool {
+        self.uid_to_profile.contains_key(&uid)
+    }
+
+    pub fn remove_user(&mut self, uid: u32) -> Option<Profile> {
+        self.uid_to_profile.remove(&uid)
     }
 }
 
 #[tauri::command]
-pub fn cmd_get_known_users(known_users: State<KnownUsersState>) -> KnownUsers {
-    let map = known_users.users.lock().unwrap();
-    map.clone()
+pub fn cmd_get_known_users(state: State<AppState>) -> KnownUsers {
+    state.known_users.lock().unwrap().clone()
 }

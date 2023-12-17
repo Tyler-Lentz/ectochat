@@ -6,7 +6,7 @@
     import { appWindow } from "@tauri-apps/api/window";
     import { invoke } from "@tauri-apps/api";
     import type { KnownUsers } from "$lib/bindings/KnownUsers";
-	import HelloBox from "./HelloBox.svelte";
+	import NoticeBox from "./NoticeBox.svelte";
 
     let rec_messages: HTMLElement;
 
@@ -99,11 +99,29 @@
             {#if "Hello" in msg}
                 {#if msg.Hello.uid != $profile?.uid}
                     <div>
-                        <HelloBox 
+                        <NoticeBox
+                            msg1={"A connection has been established with "}
+                            msg2={""}
                             data={msg.Hello}
                             />
                     </div>
                 {/if}
+            {:else if "Dropped" in msg}
+                <div>
+                    <NoticeBox
+                        msg1={"The connection with "}
+                        msg2={" has been dropped."}
+                        data={msg.Dropped}
+                        />
+                </div>
+            {:else if "Goodbye" in msg}
+                <div>
+                    <NoticeBox
+                        msg1={""}
+                        msg2={" has left the chat room."}
+                        data={msg.Goodbye}
+                        />
+                </div>
             {:else if "Text" in msg}
                 <div>
                     <MessageBox
