@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
 use crate::profile::Profile;
+use crate::message::Message;
 
 pub fn gen_rand_id() -> u32 {
     rand::random()
@@ -46,4 +47,11 @@ impl KnownUsersState {
 pub fn cmd_get_known_users(known_users: State<KnownUsersState>) -> KnownUsers {
     let map = known_users.users.lock().unwrap();
     map.clone()
+}
+
+pub fn send_msg_to_frontend(msg: &Message, window: &tauri::Window) {
+    let res = window.emit("evt_new_msg", msg);
+    if let Err(e) = res {
+        println!("evt_new_msg err {e:#?}");
+    }
 }

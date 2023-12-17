@@ -24,10 +24,11 @@ pub enum Message {
     // Payload is the profile picture
     Hello(MessageData),
 
-    // Message sent when app is closed to all peers, or manufactured
-    // by backend if tcp stream fails
-    // Payload is the profile picture
+    // Message sent when app is closed gracefully
     Goodbye(MessageData),
+
+    // Message manufactured when connection with another peer is dropped
+    Dropped(MessageData),
 
     // Messages sent p2p over tcp streams, actual data
     // sent via chat
@@ -68,6 +69,7 @@ impl Message {
             Self::Broadcast(_) => "Broadcast",
             Self::Hello(_) => "Hello",
             Self::Goodbye(_) => "Goodbye",
+            Self::Dropped(_) => "Dropped",
             Self::Image(_) => "Image",
             Self::Text(_) => "Text",
         }
