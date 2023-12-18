@@ -173,7 +173,7 @@ fn manage_p2p_connections(window: &tauri::Window) {
                                             pic: data.payload.clone(),
                                         };
                                         log::info!("Adding {} to known users.", rec_profile.name);
-                                        known_users.add_user(rec_profile.clone());
+                                        known_users.add_user(rec_profile.clone(), window);
 
                                         // also add profile information to the connection
                                         connection.peer_profile = Some(rec_profile);

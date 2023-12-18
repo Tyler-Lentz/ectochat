@@ -7,6 +7,7 @@
     import { invoke } from "@tauri-apps/api";
     import type { KnownUsers } from "$lib/bindings/KnownUsers";
 	import NoticeBox from "./NoticeBox.svelte";
+	import InfoBar from "./InfoBar.svelte";
 
     let rec_messages: HTMLElement;
 
@@ -49,7 +50,6 @@
         number,
         {name: string, uid: string}[]
     > = new Map();
-
     let uid_to_pic: Map<number, number[]> = new Map();
 
     msg_history.subscribe((new_hist) => {
@@ -94,6 +94,9 @@
 </script>
 
 <main>
+    <section id="info-bar">
+        <InfoBar />
+    </section>
     <section id="rec-messages" bind:this={rec_messages}>
         {#each $msg_history as msg}
             {#if "Hello" in msg}
@@ -148,6 +151,13 @@
 
         user-select: none;
         -webkit-user-select: none;
+    }
+
+    #info-bar {
+        width: 100%;
+        height: 1lh;
+        background-color: var(--ctp-latte-mantle);
+        border-bottom: 1px solid var(--ctp-latte-overlay0);
     }
 
     #rec-messages {
