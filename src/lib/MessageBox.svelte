@@ -190,9 +190,7 @@
     }
 
     .canvas-container {
-        align-self: flex-start;
-        scale: 0.75;
-        margin-top: 1.5em;
+        align-self: center;
     }
 
     .ack-container {

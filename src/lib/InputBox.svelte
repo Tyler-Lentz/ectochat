@@ -75,7 +75,6 @@
     #canvas-container {
         margin-right: auto;
         display: flex;
-        scale: 0.75;
     }
 
     #message-container {

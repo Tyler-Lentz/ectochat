@@ -145,12 +145,6 @@
         padding: 1rem;
     }
 
-    @media (min-width: 480px) {
-        #container:hover:has(canvas[data-editable="true"]) {
-            scale: 3;
-        }
-    }
-
     canvas {
         border-radius: 16px;
         background-color: white;

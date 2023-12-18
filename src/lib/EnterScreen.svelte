@@ -31,31 +31,34 @@
                 alert(err);
             })
     }
+
+    let state: number = 0; 
 </script>
 
 <div class="container">
     <h1>ectochat</h1>
 
-    <form on:submit={enterInfo}>
+    {#if state == 0}
         <input 
             type="text" 
             placeholder="Enter your name" 
             bind:value={entered_name}
             />
-
-        Draw your avatar:
-        <Canvas
-            bind:this={canvas}
-            width={PROFILE_PIC_SIZE}
-            height={PROFILE_PIC_SIZE}
-            editable={true}
-            />
-
+    {:else if state == 1}
+        <div id="canvas-container">
+            <Canvas
+                bind:this={canvas}
+                width={PROFILE_PIC_SIZE}
+                height={PROFILE_PIC_SIZE}
+                editable={true}
+                />
+        </div>
+    {:else if state == 2}
         <input 
             type="submit"
             value="Start Chatting"
             >
-    </form>
+    {/if}
 </div>
 
 <style>
@@ -85,5 +88,10 @@
         padding: 1rem;
         margin: 1rem;
         text-align: center;
+    }
+
+    #canvas-container {
+        scale: 3;
+        visibility: hidden;
     }
 </style>
