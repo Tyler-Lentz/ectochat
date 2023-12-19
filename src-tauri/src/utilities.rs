@@ -40,7 +40,7 @@ impl KnownUsers {
 
     pub fn add_user(&mut self, prof: Profile, window: &tauri::Window) {
         self.uid_to_profile.insert(prof.uid, prof);
-        window.emit("evt_known_users_changed", self.clone());
+        let _ = window.emit("evt_known_users_changed", self.clone());
     }
 
     pub fn does_user_exist(&self, uid: u32) -> bool {
@@ -49,7 +49,7 @@ impl KnownUsers {
 
     pub fn remove_user(&mut self, uid: u32, window: &tauri::Window) -> Option<Profile> {
         let old_profile = self.uid_to_profile.remove(&uid);
-        window.emit("evt_known_users_changed", self.clone());
+        let _ = window.emit("evt_known_users_changed", self.clone());
         old_profile
     }
 }

@@ -80,7 +80,6 @@
     #message-container {
         background-color: var(--ctp-latte-base);
         border-radius: 4px;
-        border: 1px solid var(--ctp-latte-overlay1);
         padding: 1em;
         margin: 1em;
 

@@ -148,7 +148,6 @@
     canvas {
         border-radius: 16px;
         background-color: white;
-        border: 1px solid var(--ctp-latte-overlay1);
     }
 
     #container:has(canvas[data-editable="true"]) > #palette {
@@ -166,7 +165,6 @@
         border-radius: 4px;
         padding: 8px;
         background-color: var(--ctp-latte-mantle); 
-        border: 1px solid var(--ctp-latte-overlay1);
     }
 
     #palette > button {

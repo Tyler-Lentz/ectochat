@@ -157,7 +157,7 @@
         width: 100%;
         height: 1lh;
         background-color: var(--ctp-latte-mantle);
-        border-bottom: 1px solid var(--ctp-latte-overlay0);
+        border-bottom: 1px solid var(--ctp-latte-surface0);
     }
 
     #rec-messages {
@@ -178,8 +178,7 @@
         width: 100%;
         height: max(15vh, fit-content);
 
-        border-top: 1px solid var(--ctp-latte-overlay0);
-
         background-color: var(--ctp-latte-mantle);
+        border-top: 1px solid var(--ctp-latte-surface0);
     }
 </style>

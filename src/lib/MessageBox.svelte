@@ -140,13 +140,13 @@
         background-color: var(--ctp-latte-mantle);
     }
 
-    .message-container.from-self {
+    /* .message-container.from-self {
+        border: 1px solid var(--ctp-latte-overlay1);
+    } */
+
+    .message-container.from-other {
         border: 1px solid var(--ctp-latte-overlay1);
     }
-
-    /* .message-container.from-other {
-        
-    } */
 
     .message-container header {
         display: flex;
