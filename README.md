@@ -1,30 +1,35 @@
 # ectochat
 
-Ectochat is a LAN messenger app inspired by fond childhood memories of Nintendo's [pictochat](https://en.wikipedia.org/wiki/PictoChat). Send messages and images to your friends that are connected to the same WIFI/ethernet connection.
-
-(TODO: put app image here)
+Ectochat is a LAN messenger app inspired by fond childhood memories of Nintendo's [pictochat](https://en.wikipedia.org/wiki/PictoChat). Send messages and images to your friends that are connected to the same local area network.
 
 ## Download
 
 See all releases [here](https://github.com/Tyler-Lentz/ectochat/releases).
 
-Eventually, I plan to set up a github action to compile the app for all platforms (as described [here](https://tauri.app/v1/guides/building/cross-platform/)). For now, however, there will only be releases for Linux systems with the AppImage format.
+## Planned Features
+
+- image messages
+- audio messages
+- send message to specific person, instead of everyone
+- better UI to view all of the people you are currently chatting with
 
 ## Security
 
-Ectochat operates by sending broadcast UDP packets across the local network. In other words, anyone connected to the same network can see everything you send, so don't send anything you wouldn't say out loud in a room!
+Messages sent via Ectochat are not encrypted, so do not use this app to send any sensitive information!
 
-## Planned Features
+## Network
 
-- ACK messages so you can see who has seen your message
-- Quiet mode, which does not send ACKS or a "Hello World!" message upon joining.
-- Send images in messages
-- Many chatrooms (under different UDP Ports)
-- Robust error handling (so that the app doesn't just crash on error)
-    - limit size of text messages
-    - remove all unsafe `unwrap` calls in Rust code, and add meaningful error messages through frontend modals.
-- Send large files / images in messages
-    - probably via multiple messages with seq_nums 
+There are two major parts to how this app sends messages on the network.
+
+First, there are broadcasts. These are broadcast UDP datagrams (i.e. they are sent to everyone on the LAN) that are periodically sent by each host which announce one's presence.
+
+Once your app detects that there is another host on the network using Ectochat, a TCP stream will be established with that host. This is the second part of how the networking works. The host with the greater UID initiates the connection, while the other accepts. Each side starts by sending a "Hello" message, which associates their UID with a name and profile picture.
+
+From then on out, every message that you send will be placed in each active TCP stream you have open. When a host leaves the app, they send a "Goodbye" message to all of their active TCP streams, before terminating the connection. This allows the other hosts to gracefully display a message saying that the host has left the chat room.
+
+If a TCP connection drops, for whatever reason, then the app will terminate the connection itself and assume that the other host either crashed, killed the process, or ended their application in some other nonstandard way. This will display a message saying that a connection has been dropped.
+
+While TCP itself guarantees reliability via ACKs, there are also "Ack" messages that are sent by each client to verify that the message was correctly received and displayed on the other host's screen. These are shown by hovering over the eyeball icon to the right of messages.
 
 ## Build
 
