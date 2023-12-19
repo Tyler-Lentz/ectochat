@@ -140,13 +140,9 @@
         background-color: var(--ctp-latte-mantle);
     }
 
-    .message-container.from-self {
+    .message-container.from-other {
         border: 1px solid var(--ctp-latte-overlay1);
     }
-
-    /* .message-container.from-other {
-        
-    } */
 
     .message-container header {
         display: flex;
@@ -190,9 +186,7 @@
     }
 
     .canvas-container {
-        align-self: flex-start;
-        scale: 0.75;
-        margin-top: 1.5em;
+        align-self: center;
     }
 
     .ack-container {

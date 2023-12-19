@@ -1,6 +1,5 @@
 <script lang="ts">
     import { profile } from '$lib/stores';
-	import type { Message } from '$lib/bindings/Message';
 
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
@@ -75,13 +74,11 @@
     #canvas-container {
         margin-right: auto;
         display: flex;
-        scale: 0.75;
     }
 
     #message-container {
         background-color: var(--ctp-latte-base);
         border-radius: 4px;
-        border: 1px solid var(--ctp-latte-overlay1);
         padding: 1em;
         margin: 1em;
 
