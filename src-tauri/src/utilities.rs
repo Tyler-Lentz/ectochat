@@ -1,5 +1,5 @@
 use std::{time::{SystemTime, UNIX_EPOCH}, collections::HashMap};
-use tauri::{State, Manager};
+use tauri::State;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 

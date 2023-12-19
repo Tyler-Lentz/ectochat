@@ -362,6 +362,10 @@ fn listen_for_broadcasts(window: &tauri::Window) {
                         }
                         {
                             let stream_type = if is_localhost_stream(&stream) {
+                                // We have made the stream with ourselves, so now we can tell the frontend
+                                // to start displaying the chatting screen
+                                let _ = window.emit("evt_start_chatting", "");
+
                                 TcpStreamType::Write
                             } else {
                                 TcpStreamType::Both

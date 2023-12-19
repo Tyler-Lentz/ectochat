@@ -4,13 +4,15 @@
     import type { Profile } from '$lib/bindings/Profile';
     import Canvas from '$lib/Canvas.svelte';
     import { MAX_NAME_LEN, PROFILE_PIC_SIZE } from '$lib/contants';
+	import { appWindow } from '@tauri-apps/api/window';
+	import { createEventDispatcher, onMount } from 'svelte';
 
     let entered_name: string = "";
     let display_name_error: boolean = false;
     let canvas: Canvas;
-    let profile_pic_data: string = "";
 
     function createProfile() {
+        let profile_pic_data = (canvas.getImageData()?.data || []).toString();
         invoke('cmd_personalize_new_profile', {newName: entered_name, newPic: profile_pic_data})
             .then((r: any) => {
                 let resp = r as Profile;
@@ -24,8 +26,9 @@
             .catch(err => {
                 alert(err);
             })
-    }
 
+        state++; // go to loading screen
+    }
     let state: number = 0;
 
     function isNameValid(name: string) {
@@ -47,11 +50,32 @@
         }
     };
 
-    function validatePicture() {
-        profile_pic_data = (canvas.getImageData()?.data || []).toString();
-        state++;
+	let initialized = false;
+
+	appWindow.listen("evt_start_chatting", () => {
+		initialized = true;
+	});
+
+    const dispatch = createEventDispatcher();
+
+    function leaveEnterScreen(e: SubmitEvent) {
+        e.preventDefault();
+        if (initialized) {
+            dispatch('initialized', {});
+        }
     }
 
+    let loading_dots = "";
+
+    onMount(() => {
+        setInterval(() => {
+            if (loading_dots.length == 3) {
+                loading_dots= "";
+            } else {
+                loading_dots += ".";
+            }
+        }, 800);
+    });
 </script>
 
 <div class="container">
@@ -74,7 +98,7 @@
         </section>
     {:else if state == 1}
         <section id="canvas-section">
-            <form on:submit={validatePicture}>
+            <form on:submit={createProfile}>
                 <div id="canvas-container">
                     <Canvas
                         bind:this={canvas}
@@ -87,12 +111,14 @@
             </form>
         </section>
     {:else if state == 2}
-    <div>
-        <form on:submit={createProfile}>
-            
-            <input id="verify-profile-btn" type="submit" value="Start Chatting">
+        <span 
+            id="loader" 
+            style={(initialized) ? "animation-iteration-count: 1; opacity: 0;" : ""} 
+            />
+        <form on:submit={leaveEnterScreen}>
+            <input data-visible={initialized} id="start-chatting-btn" type="submit" value="Start Chatting" />
         </form>
-    </div>
+        <span data-visible={!initialized} id="loader-text">Loading{loading_dots}</span>
     {/if}
 </div>
 
@@ -192,8 +218,81 @@
         }
     }
 
-    #verify-profile-btn {
+    #loader-text, #start-chatting-btn {
+        color: var(--ctp-latte-blue);
         position: absolute;
-        top: 40vh;
+        top: 80vh;
     }
+
+    #start-chatting-btn {
+        transition: opacity 500ms;
+    }
+
+    #loader-text[data-visible="false"],
+    #start-chatting-btn[data-visible="false"] {
+        opacity: 0;
+    }
+
+    #loader-text[data-visible="true"],
+    #start-chatting-btn[data-visible="true"] {
+        opacity: 1;
+    }
+
+    /* https://cssloaders.github.io/ */
+    #loader {
+        color: var(--ctp-latte-blue);
+        top: 20vh;
+
+        transition: opacity 2s;
+
+        font-size: 45px;
+        text-indent: -9999em;
+        overflow: hidden;
+        width: 1em;
+        height: 1em;
+        border-radius: 50%;
+        position: relative;
+        transform: translateZ(0);
+        animation: mltShdSpin 1.7s infinite ease, round 1.7s infinite ease;
+    }
+
+    @keyframes mltShdSpin {
+        0% {
+            box-shadow: 0 -0.83em 0 -0.4em,
+                0 -0.83em 0 -0.42em, 0 -0.83em 0 -0.44em,
+                0 -0.83em 0 -0.46em, 0 -0.83em 0 -0.477em;
+        }
+        5%,
+        95% {
+            box-shadow: 0 -0.83em 0 -0.4em, 
+                0 -0.83em 0 -0.42em, 0 -0.83em 0 -0.44em, 
+                0 -0.83em 0 -0.46em, 0 -0.83em 0 -0.477em;
+        }
+        10%,
+        59% {
+            box-shadow: 0 -0.83em 0 -0.4em, 
+                -0.087em -0.825em 0 -0.42em, -0.173em -0.812em 0 -0.44em, 
+                -0.256em -0.789em 0 -0.46em, -0.297em -0.775em 0 -0.477em;
+        }
+        20% {
+            box-shadow: 0 -0.83em 0 -0.4em, -0.338em -0.758em 0 -0.42em,
+                -0.555em -0.617em 0 -0.44em, -0.671em -0.488em 0 -0.46em, 
+                -0.749em -0.34em 0 -0.477em;
+        }
+        38% {
+            box-shadow: 0 -0.83em 0 -0.4em, -0.377em -0.74em 0 -0.42em,
+                -0.645em -0.522em 0 -0.44em, -0.775em -0.297em 0 -0.46em, 
+                -0.82em -0.09em 0 -0.477em;
+        }
+        100% {
+            box-shadow: 0 -0.83em 0 -0.4em, 0 -0.83em 0 -0.42em, 
+                0 -0.83em 0 -0.44em, 0 -0.83em 0 -0.46em, 0 -0.83em 0 -0.477em;
+        }
+    }
+
+    @keyframes round {
+        0% { transform: rotate(0deg) }
+        100% { transform: rotate(360deg) }
+    }
+
 </style>
