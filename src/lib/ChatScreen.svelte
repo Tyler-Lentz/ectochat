@@ -3,7 +3,6 @@
     import type { Message } from "$lib/bindings/Message";
 	import { msg_history, profile } from "$lib/stores";
 	import InputBox from "$lib/InputBox.svelte";
-    import { appWindow } from "@tauri-apps/api/window";
     import { invoke } from "@tauri-apps/api";
     import type { KnownUsers } from "$lib/bindings/KnownUsers";
 	import NoticeBox from "./NoticeBox.svelte";

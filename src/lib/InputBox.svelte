@@ -1,6 +1,5 @@
 <script lang="ts">
     import { profile } from '$lib/stores';
-	import type { Message } from '$lib/bindings/Message';
 
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
