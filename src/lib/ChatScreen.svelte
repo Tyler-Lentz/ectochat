@@ -87,8 +87,6 @@
                             }
                         }
                     });
-
-                    console.log(uid_to_pic);
                 });
         });
     });
