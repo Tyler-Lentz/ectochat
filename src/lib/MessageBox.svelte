@@ -105,7 +105,7 @@
             <span id="name">{data.name}</span>
             <span id="uid">{data.uid.toString(16)}</span>
         </header>
-        <textarea id="message">{message}</textarea>
+        <textarea id="message" readonly>{message}</textarea>
     </section>
     <button class="ack-container" 
          data-num-acks={acks.length} 
