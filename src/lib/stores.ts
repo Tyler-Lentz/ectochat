@@ -1,10 +1,12 @@
 import { writable } from 'svelte/store';
-import type {Writable} from 'svelte/store';
+import type { Writable } from 'svelte/store';
 import type { Message } from '$lib/bindings/Message';
 import type { Profile } from '$lib/bindings/Profile';
+import type { KnownUsers } from '$lib/bindings/KnownUsers';
 
 export const msg_history: Writable<Array<Message>> = writable([]);
 export const profile: Writable<Profile | null> = writable(null);
+export const known_users: Writable<KnownUsers | null> = writable(null);
 
 // This will be set to true when a modal is closed via the esc key or clicking
 // outside the modal itself. Then, the component that is handling the modal

@@ -151,7 +151,7 @@ fn manage_p2p_connections(window: &tauri::Window) {
                             // pull out the bytes we used from the buffer
                             let _ = connection.stream.read_exact(&mut full_msg_buf);
 
-                            log::info!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), connection.stream.peer_addr().unwrap());
+                            log::info!("Received {} byte {} message from {}", msg_len, rec_msg.get_type_str(), connection.peer_addr);
 
                             // add to msg history
                             {

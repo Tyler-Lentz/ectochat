@@ -1,29 +1,20 @@
 <script lang="ts">
-	import { appWindow } from "@tauri-apps/api/window";
-	import type { KnownUsers } from "$lib/bindings/KnownUsers";
+	import { known_users } from "$lib/stores";
 
-    let known_users: KnownUsers | null = null;
-
-    appWindow.listen("evt_new_msg", (e) => {
-        known_users = e.payload as KnownUsers;
-    })
-
-    function getNumOtherUsers() {
-        if (known_users == null) {
-            return 0;
+    let num_other_users = 0;
+    known_users.subscribe((new_known_users) => {
+        if (new_known_users == null) {
+            num_other_users = 0;
         } else {
-            return Object.keys(known_users.uid_to_profile).length - 1;
+            num_other_users = Object.keys(new_known_users.uid_to_profile).length - 1;
         }
-    }
+    });
 
-    function isThereOnlyOneOtherUser() {
-        return getNumOtherUsers() == 1;
-    }
 </script>
 
 <div id="container">
     <span>
-        Chatting with <span class="highlight">{getNumOtherUsers()}</span> {(isThereOnlyOneOtherUser()) ? "user" : "users"}
+        Chatting with <span class="highlight">{num_other_users}</span> {(num_other_users == 1) ? "user" : "users"}
     </span>
 </div>
 
