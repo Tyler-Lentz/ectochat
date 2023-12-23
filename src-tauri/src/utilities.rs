@@ -58,3 +58,12 @@ impl KnownUsers {
 pub fn cmd_get_known_users(state: State<AppState>) -> KnownUsers {
     state.known_users.lock().unwrap().clone()
 }
+
+pub fn parse_img_str(img: &str) -> Vec<u8> {
+    img 
+        .split(',')
+        .map(|char| {
+            char.parse::<u8>().unwrap()
+        })
+        .collect()
+}

@@ -3,22 +3,11 @@
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
 	import { onMount } from 'svelte';
-	import { MESSAGE_PIC_SIZE, PROFILE_PIC_SIZE } from '$lib/contants';
-    import keyboardIcon from '$lib/icons/keyboard.svg';
+	import { PROFILE_PIC_SIZE } from '$lib/contants';
     import brushIcon from '$lib/icons/brush.svg';
 	import { openModal } from 'svelte-modals';
-	import AckModal from './AckModal.svelte';
 	import { writable } from 'svelte/store';
-
-    let canvas: Canvas;
-    onMount(() => {
-        let imageData = new ImageData(
-            new Uint8ClampedArray($profile?.pic || []),
-            PROFILE_PIC_SIZE, 
-            PROFILE_PIC_SIZE 
-        );
-        canvas.setImageData(imageData);
-    });
+	import BrushModal from './BrushModal.svelte';
 
     let message_str: string;
     function checkForEnter(e: KeyboardEvent) {
@@ -34,17 +23,17 @@
 
     function openBrushModal() {
         let s = writable(false);
-        openModal(AckModal, {message: [], startClose: s});
+        openModal(BrushModal, {startClose: s});
     }
 </script>
 
 <form id="container" >
     <div id="canvas-container">
         <Canvas 
-            bind:this={canvas}
             width={PROFILE_PIC_SIZE}
             height={PROFILE_PIC_SIZE}
             editable={false}
+            data={$profile?.pic}
             />
     </div>
 

@@ -8,6 +8,8 @@
 	import NoticeBox from "./NoticeBox.svelte";
 	import InfoBar from "./InfoBar.svelte";
 	import { onMount } from "svelte";
+	import Canvas from "./Canvas.svelte";
+	import { MESSAGE_PIC_SIZE } from "./contants";
 
     let rec_messages: HTMLElement;
 
@@ -131,6 +133,15 @@
                         data={msg.Text}
                         pic={uid_to_pic.get(msg.Text.uid) || []}
                         acks={mid_to_acks.get(msg.Text.mid) || []} 
+                        />
+                </div>
+            {:else if "Image" in msg}
+                <div>
+                    <Canvas 
+                        width={MESSAGE_PIC_SIZE}
+                        height={MESSAGE_PIC_SIZE}
+                        editable={false}
+                        data={msg.Image.payload}
                         />
                 </div>
             {/if}

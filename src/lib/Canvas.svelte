@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { onMount } from "svelte";
     import brushIcon from "$lib/icons/brush.svg";
+	import { MESSAGE_PIC_SIZE } from "./contants";
 
     export let width: number = -1;
     export let height: number = -1;
     export let editable: boolean;
+    export let scale: number = 1;
+    export let data: number[] | undefined = undefined;
 
     let color: string;
     const colors = [
@@ -36,20 +39,6 @@
     let has_moved: boolean = false;
     let prev_point: {x: number, y: number} = {x: 0, y: 0};
 
-    // Set width/height to equal size of container if kept at the
-    // default -1 values
-    onMount(() => {
-        if (height == -1) {
-            canvas.style.height = "100%";
-            height = canvas.offsetHeight;
-        }
-
-        if (width == -1) {
-            canvas.style.width = "100%";
-            width = canvas.offsetWidth;
-        }
-    });
-
     function updateColor(new_color: string) {
         color = new_color;
         if (context != null) {
@@ -62,6 +51,10 @@
         return context?.getImageData(0, 0, width, height);
     }
 
+    export function getFormattedImageData() {
+        return (getImageData()?.data || []).toString();
+    }
+
     export function setImageData(data: ImageData) {
         context?.putImageData(data, 0, 0);
     }
@@ -71,14 +64,39 @@
         context = canvas.getContext('2d');
         if (context != null) {
             context.lineWidth = 2;
+            context.scale(scale, scale);
             updateColor('black');
+        }
+
+        // Set width/height to equal size of container if kept at the
+        // default -1 values
+        if (height == -1) {
+            canvas.style.height = "100%";
+            height = canvas.offsetHeight;
+        }
+
+        if (width == -1) {
+            canvas.style.width = "100%";
+            width = canvas.offsetWidth;
+        }
+
+        // put prepopulated data then put inside at start
+        // data.length must be a non-zero multiple of 4 for it to be a valid
+        // image data
+        if (data != undefined && data.length > 0 && data.length % 4 == 0) {
+            let imageData = new ImageData(
+                new Uint8ClampedArray(data),
+                width, 
+                height,
+            );
+            setImageData(imageData);
         }
     });
 
     function onMouseDown(e: MouseEvent) {
         if (editable) {
             is_drawing = true;
-            prev_point = {x: e.offsetX, y: e.offsetY};
+            prev_point = {x: e.offsetX / scale, y: e.offsetY / scale};
             has_moved = false;
         }
     };
@@ -89,7 +107,7 @@
 
             if (!has_moved && context != null) {
                 // Make sure single dot is displayed
-                context.fillRect(e.offsetX, e.offsetY, context.lineWidth, context.lineWidth);
+                context.fillRect(e.offsetX / scale, e.offsetY / scale, context.lineWidth, context.lineWidth);
             }
 
             prev_point = {x: 0, y: 0};
@@ -102,11 +120,11 @@
 
             context.beginPath();
             context.moveTo(prev_point.x, prev_point.y);
-            context.lineTo(e.offsetX, e.offsetY);
+            context.lineTo(e.offsetX / scale, e.offsetY / scale);
             context.closePath();
             context.stroke();
 
-            prev_point = {x: e.offsetX, y: e.offsetY};
+            prev_point = {x: e.offsetX / scale, y: e.offsetY / scale};
         }
     }
 
@@ -161,6 +179,7 @@
     canvas {
         border-radius: 16px;
         background-color: white;
+        border: 1px solid var(--ctp-latte-overlay0);
     }
 
     #container:has(canvas[data-editable="true"]) > #palette {

@@ -12,7 +12,7 @@
     let canvas: Canvas;
 
     function createProfile() {
-        let profile_pic_data = (canvas.getImageData()?.data || []).toString();
+        let profile_pic_data = canvas.getFormattedImageData();
         invoke('cmd_personalize_new_profile', {newName: entered_name, newPic: profile_pic_data})
             .then((r: any) => {
                 let resp = r as Profile;

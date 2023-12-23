@@ -5,6 +5,7 @@
     export let modal_height: number;
     export let isOpen: boolean;
     export let startClose: Writable<boolean>;
+    export let style: string = "";
 
     startClose.subscribe((new_val) => {
         if (new_val) {
@@ -18,7 +19,7 @@
 
 {#if isOpen}
 <div role="dialog" class="modal" style="--modal-height: {modal_height}px;">
-    <div class="contents" data-open={isOpen} data-close={$startClose}>
+    <div class="contents" style={style} data-open={isOpen} data-close={$startClose}>
         <slot />
     </div>
 </div>
