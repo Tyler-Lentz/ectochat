@@ -2,8 +2,8 @@
 	import { onMount } from "svelte";
     import brushIcon from "$lib/icons/brush.svg";
 
-    export let width: number;
-    export let height: number;
+    export let width: number = -1;
+    export let height: number = -1;
     export let editable: boolean;
 
     let color: string;
@@ -35,6 +35,20 @@
     let is_drawing: boolean = false;
     let has_moved: boolean = false;
     let prev_point: {x: number, y: number} = {x: 0, y: 0};
+
+    // Set width/height to equal size of container if kept at the
+    // default -1 values
+    onMount(() => {
+        if (height == -1) {
+            canvas.style.height = "100%";
+            height = canvas.offsetHeight;
+        }
+
+        if (width == -1) {
+            canvas.style.width = "100%";
+            width = canvas.offsetWidth;
+        }
+    });
 
     function updateColor(new_color: string) {
         color = new_color;
@@ -142,7 +156,6 @@
         align-items: center;
         justify-content: center;
 
-        padding: 1rem;
     }
 
     canvas {
