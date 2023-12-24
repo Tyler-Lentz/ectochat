@@ -43,7 +43,9 @@
     });
 
     function handleResize() {
-        if (window.matchMedia("(min-width: 1000px)").matches) {
+        if (window.matchMedia("(min-width: 1400px)").matches) {
+            scale = 2.5;
+        } else if (window.matchMedia("(min-width: 1100px)").matches) {
             scale = 2;
         } else {
             scale = 1.5;

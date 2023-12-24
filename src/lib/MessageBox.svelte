@@ -8,7 +8,6 @@
     import AckModal from '$lib/AckModal.svelte';
 	import { writable, type Writable } from "svelte/store";
 
-    let canvas: Canvas;
     export let data: MessageData;
     export let pic: number[]
     export let payload_type: "Text" | "Image";
@@ -79,7 +78,6 @@
     </aside> 
             <div class="canvas-container">
                 <Canvas 
-                    bind:this={canvas}
                     width={PROFILE_PIC_SIZE}
                     height={PROFILE_PIC_SIZE}
                     data={pic}

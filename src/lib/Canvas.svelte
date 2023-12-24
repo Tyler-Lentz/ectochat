@@ -18,6 +18,17 @@
         "violet"
     ];
 
+    function getInverseColor(color: string) {
+        switch (color) {
+            case "red":
+            case "orange":
+            case "violet":
+                return "var(--ctp-latte-blue)";
+            default: 
+                return "var(--ctp-latte-rosewater)";
+        }
+    }
+
     // Have to use the filter css attribute to change the color of an
     // svg icon easily, so this function just returns the right filter for the 
     // current color, from this website: https://angel-rs.github.io/css-color-filter-generator/
@@ -37,6 +48,12 @@
     let is_drawing: boolean = false;
     let has_moved: boolean = false;
     let prev_point: {x: number, y: number} = {x: 0, y: 0};
+    let line_width: number = 2;
+    $: {
+        if (context != null) {
+            context.lineWidth = line_width;
+        }
+    }
 
     function updateColor(new_color: string) {
         color = new_color;
@@ -131,7 +148,6 @@
         e.preventDefault();
         updateColor((e.target as HTMLButtonElement).value)
     }
-
 </script>
 
 <div id="container">
@@ -162,6 +178,20 @@
                 >
             </button>
         {/each}
+        <div id="brush-width-controls">
+            {#each [2, 4, 6] as width}
+                <button
+                    style:background={color}
+                    style:border-color={(line_width == width) ? getInverseColor(color): ""}
+                    style:width={width * 2 + "px"}
+                    style:height={width * 2 + "px"}
+                    on:click={() => {
+                        line_width = width;
+                    }}
+                    >
+                    </button>
+            {/each}
+        </div>
     </div> 
 </div>
 
@@ -191,6 +221,7 @@
         transition: opacity 0.5s ease-in;
         flex-direction: column;
         justify-content: space-between;
+        align-items: center;
 
         margin-left: 0.5em;
 
@@ -203,4 +234,25 @@
         width: 12px;
         height: 8px;
     }
+
+    #brush-width-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2px;
+    }
+
+    #brush-width-controls > button {
+        border-radius: 50%;
+        padding: 0;
+        margin-right: 2px;
+        border: .5px solid transparent;
+        transition: border-color 400ms ease-in-out;
+    }
+
+    #brush-width-controls > button:last-child {
+        margin-right: 0;
+    }
+
 </style>
