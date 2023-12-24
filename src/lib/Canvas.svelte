@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
     import brushIcon from "$lib/icons/brush.svg";
-	import { MESSAGE_PIC_SIZE } from "./contants";
 
     export let width: number = -1;
     export let height: number = -1;
@@ -145,6 +144,7 @@
         on:mouseup={onMouseUp}
         on:mouseleave={onMouseUp}
         on:mousemove={onMouseMove}
+        style:border-color={(editable) ? "" : "transparent"}
         >
     </canvas>
     <div id="palette">

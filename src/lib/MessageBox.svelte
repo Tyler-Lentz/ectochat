@@ -3,8 +3,7 @@
     import { modal_closed, profile } from "$lib/stores";
     import EyeIcon from '$lib/icons/eye.svg';
     import Canvas from '$lib/Canvas.svelte';
-	import { PROFILE_PIC_SIZE } from "$lib/contants";
-	import { onMount } from "svelte";
+	import { MESSAGE_PIC_WIDTH, MESSAGE_PIC_HEIGHT, PROFILE_PIC_SIZE, ACK_Z_INDEX } from "$lib/contants";
     import { openModal } from 'svelte-modals';
     import AckModal from '$lib/AckModal.svelte';
 	import { writable, type Writable } from "svelte/store";
@@ -12,21 +11,7 @@
     let canvas: Canvas;
     export let data: MessageData;
     export let pic: number[]
-
-    onMount(() => {
-        if (pic.length > 0) {
-            try {
-                let imageData = new ImageData(
-                    new Uint8ClampedArray(pic),
-                    PROFILE_PIC_SIZE, 
-                    PROFILE_PIC_SIZE 
-                );
-                canvas.setImageData(imageData);
-            } catch(e) {
-                console.error(e);
-            }
-        }
-    });
+    export let payload_type: "Text" | "Image";
 
     const message = data.payload.map((octet) => String.fromCharCode(octet)).join('');
     const date = new Date(Number(data.timestamp) * 1000)
@@ -97,6 +82,7 @@
                     bind:this={canvas}
                     width={PROFILE_PIC_SIZE}
                     height={PROFILE_PIC_SIZE}
+                    data={pic}
                     editable={false}
                     />
             </div>
@@ -105,13 +91,25 @@
             <span id="name">{data.name}</span>
             <span id="uid">{data.uid.toString(16)}</span>
         </header>
-        <textarea id="message" readonly>{message}</textarea>
+        {#if payload_type == "Text"}
+            <textarea id="message" readonly>{message}</textarea>
+        {:else}
+            <div class="canvas-container">
+                <Canvas 
+                    width={MESSAGE_PIC_WIDTH}
+                    height={MESSAGE_PIC_HEIGHT}
+                    editable={false}
+                    data={data.payload}
+                    />
+            </div>
+        {/if}
     </section>
     <button class="ack-container" 
          data-num-acks={acks.length} 
          data-acks={acks}
          data-clicked={clicked}
          data-opened={opened}
+         style:z-index={ACK_Z_INDEX}
          on:click={handleAckClick}
          on:mouseenter={hoverAcks}
          on:mouseleave={leaveHoverAcks}
@@ -187,10 +185,10 @@
 
     .canvas-container {
         align-self: center;
+        margin: 1em;
     }
 
     .ack-container {
-        z-index: 100; /* so that when modal covers screen mouseleave event still tracks this element */
         outline: none;
         display: flex;
         flex-direction: row; /* make num appear to side */

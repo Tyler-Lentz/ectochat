@@ -36,6 +36,8 @@
         justify-content: center;
         align-items: center;
 
+        z-index: var(--z-index);
+
         /* allow click-through to backdrop */
         pointer-events: none;
     }

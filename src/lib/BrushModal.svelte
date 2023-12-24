@@ -5,9 +5,9 @@
 	import type { Writable } from 'svelte/store';
 	import GenericModal from './GenericModal.svelte';
 	import Canvas from './Canvas.svelte';
-	import { MESSAGE_PIC_SIZE } from './contants';
-	import { appWindow } from '@tauri-apps/api/window';
+	import { BRUSH_MODAL_Z_INDEX, MESSAGE_PIC_HEIGHT, MESSAGE_PIC_WIDTH} from './contants';
 	import { invoke } from '@tauri-apps/api';
+	import { onMount } from 'svelte';
 
     export let isOpen: boolean;
     export let startClose: Writable<boolean>;
@@ -35,21 +35,36 @@
 
         startClose.set(true);
     }
+
+    let scale: number;
+
+    onMount(() => {
+        handleResize();
+    });
+
+    function handleResize() {
+        if (window.matchMedia("(min-width: 1000px)").matches) {
+            scale = 2;
+        } else {
+            scale = 1.5;
+        }
+    }
 </script>
 
-<svelte:window on:keydown={handleKeyPress}/>
+<svelte:window on:keydown={handleKeyPress} on:resize={handleResize}/>
 
 <GenericModal
     {isOpen}
     {startClose}
-    modal_height={MESSAGE_PIC_SIZE + (PADDING * 2)}
-    style={`padding: ${PADDING}px; scale: 2`}
+    modal_height={MESSAGE_PIC_HEIGHT + (PADDING * 2)}
+    style={`padding: ${PADDING}px; scale: ${scale};`}
+    --z-index={BRUSH_MODAL_Z_INDEX}
     >
     <div id="container">
         <Canvas 
             bind:this={canvas}
-            width={MESSAGE_PIC_SIZE}
-            height={MESSAGE_PIC_SIZE}
+            width={MESSAGE_PIC_WIDTH}
+            height={MESSAGE_PIC_HEIGHT}
             editable={true}
             />
         <div id="input-container">
