@@ -183,6 +183,11 @@
         resize: none;
     }
 
+    #ack {
+        min-width: 24px;
+        min-height: 24px;
+    }
+
     .canvas-container {
         align-self: center;
         margin: 1em;
