@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from "svelte";
     import brushIcon from "$lib/icons/brush.svg";
+    import eraserIcon from "$lib/icons/eraser.svg";
+	import { openModal } from "svelte-modals";
+	import PromptModal from "./PromptModal.svelte";
+	import { writable } from "svelte/store";
 
     export let width: number = -1;
     export let height: number = -1;
@@ -146,13 +150,28 @@
 
     function handlePickColor(e: MouseEvent) {
         e.preventDefault();
-        updateColor((e.target as HTMLButtonElement).value)
+        updateColor((e.target as HTMLButtonElement).value);
+    }
+
+    let erase_canvas = writable("");
+    erase_canvas.subscribe((val) => {
+        if (val === "Yes") {
+            context?.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
+            erase_canvas.set("");
+        }
+    });
+
+    function openEraseModal() {
+        openModal(PromptModal, {
+            message: "Erase Canvas?", 
+            result: erase_canvas,
+        });
     }
 </script>
 
 <div id="container">
     <canvas 
-        {width} 
+        {width}
         {height}
         bind:this={canvas}
         data-editable={editable}
@@ -164,12 +183,21 @@
         >
     </canvas>
     <div id="palette">
-        <img src={brushIcon} 
-             alt={color}
-             style:filter={getCurrentFilter(color)}
-             width={12}
-             height={8}
-             >
+        <div id="brush-type-controls">
+            <img src={brushIcon} 
+                alt={color}
+                style:filter={getCurrentFilter(color)}
+                width={12}
+                height={8}
+                >
+            <img src={eraserIcon} 
+                on:click={openEraseModal}
+                id="eraser-img"
+                alt={"Erase"}
+                width={12}
+                height={8}
+                >
+        </div>
         {#each colors as col}
             <button
                 style:background={col} 
@@ -196,14 +224,28 @@
 </div>
 
 <style>
+
     #container {
-        scale: 1;
         transition: scale 1s ease-in-out;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: center;
+    }
 
+    #brush-type-controls {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #eraser-img {
+        transition: translate 400ms ease-in;
+    }
+
+    #eraser-img:hover {
+        translate: 0px -1px 0px;
     }
 
     canvas {
