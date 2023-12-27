@@ -19,33 +19,9 @@
         "blue",
         "orange",
         "green",
-        "violet"
+        "violet",
+        "white",
     ];
-
-    function getInverseColor(color: string) {
-        switch (color) {
-            case "red":
-            case "orange":
-            case "violet":
-                return "var(--ctp-latte-blue)";
-            default: 
-                return "var(--ctp-latte-rosewater)";
-        }
-    }
-
-    // Have to use the filter css attribute to change the color of an
-    // svg icon easily, so this function just returns the right filter for the 
-    // current color, from this website: https://angel-rs.github.io/css-color-filter-generator/
-    function getCurrentFilter(col: string) {
-        switch (col) {
-            case "black": return "brightness(0) saturate(100%)";
-            case "red": return "brightness(0) saturate(100%) invert(20%) sepia(70%) saturate(6966%) hue-rotate(2deg) brightness(96%) contrast(129%)"
-            case "blue": return "brightness(0) saturate(100%) invert(8%) sepia(99%) saturate(7452%) hue-rotate(246deg) brightness(92%) contrast(144%)"
-            case "orange": return "brightness(0) saturate(100%) invert(63%) sepia(46%) saturate(1578%) hue-rotate(359deg) brightness(101%) contrast(107%)"
-            case "green": return "brightness(0) saturate(100%) invert(28%) sepia(93%) saturate(1296%) hue-rotate(93deg) brightness(93%) contrast(104%)"
-            case "violet": return "brightness(0) saturate(100%) invert(23%) sepia(100%) saturate(6950%) hue-rotate(273deg) brightness(95%) contrast(128%)"
-        }
-    }
 
     let canvas: HTMLCanvasElement;
     let context: CanvasRenderingContext2D | null;
@@ -183,23 +159,11 @@
         >
     </canvas>
     <div id="palette">
-        <div id="brush-type-controls">
-            <img src={brushIcon} 
-                alt={color}
-                style:filter={getCurrentFilter(color)}
-                width={12}
-                height={8}
-                >
-            <img src={eraserIcon} 
-                on:click={openEraseModal}
-                id="eraser-img"
-                alt={"Erase"}
-                width={12}
-                height={8}
-                >
-        </div>
         {#each colors as col}
             <button
+                class={"color-picker"}
+                data-current={col == color}
+                style={`--curr-color: ${col}`}
                 style:background={col} 
                 on:click={handlePickColor}
                 value={col}
@@ -207,10 +171,10 @@
             </button>
         {/each}
         <div id="brush-width-controls">
-            {#each [2, 4, 6] as width}
+            {#each [1, 2, 4] as width}
                 <button
                     style:background={color}
-                    style:border-color={(line_width == width) ? getInverseColor(color): ""}
+                    style:border-color={(line_width == width) ? "var(--ctp-latte-rosewater)": ""}
                     style:width={width * 2 + "px"}
                     style:height={width * 2 + "px"}
                     on:click={() => {
@@ -220,6 +184,13 @@
                     </button>
             {/each}
         </div>
+        <img src={eraserIcon} 
+            on:click={openEraseModal}
+            id="eraser-img"
+            alt={"Erase"}
+            width={12}
+            height={8}
+            >
     </div> 
 </div>
 
@@ -231,21 +202,6 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
-    }
-
-    #brush-type-controls {
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-    }
-
-    #eraser-img {
-        transition: translate 400ms ease-in;
-    }
-
-    #eraser-img:hover {
-        translate: 0px -1px 0px;
     }
 
     canvas {
@@ -270,11 +226,22 @@
         border-radius: 4px;
         padding: 8px;
         background-color: var(--ctp-latte-mantle); 
+
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
     }
 
-    #palette > button {
+    #palette > .color-picker {
+        box-shadow: 0px 0px 0px 0px var(--curr-color);
+        transition: box-shadow 200ms;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
         width: 12px;
         height: 8px;
+    }
+    
+    #palette > .color-picker:is(:hover, [data-current="true"]) {
+        box-shadow: 2px 0px 0px 0px var(--curr-color);
     }
 
     #brush-width-controls {
