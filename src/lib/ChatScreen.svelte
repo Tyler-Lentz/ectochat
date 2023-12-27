@@ -131,6 +131,16 @@
                         data={msg.Text}
                         pic={uid_to_pic.get(msg.Text.uid) || []}
                         acks={mid_to_acks.get(msg.Text.mid) || []} 
+                        payload_type={"Text"}
+                        />
+                </div>
+            {:else if "Image" in msg}
+                <div>
+                    <MessageBox 
+                        data={msg.Image}
+                        pic={uid_to_pic.get(msg.Image.uid) || []}
+                        acks={mid_to_acks.get(msg.Image.mid) || []}
+                        payload_type={"Image"}
                         />
                 </div>
             {/if}

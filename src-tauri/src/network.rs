@@ -1,7 +1,7 @@
 use std::{net::{UdpSocket, TcpStream, IpAddr, SocketAddr, TcpListener, Ipv4Addr}, sync::{Mutex, Arc}, time::Duration, collections::HashSet, io::{Write, Read}};
 use tauri::{State, async_runtime, Manager};
 use const_format::formatcp;
-use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{gen_rand_id, get_curr_time, send_msg_to_frontend}, profile::Profile};
+use crate::{message::{Message, MessageData, HEADER_LEN}, utilities::{gen_rand_id, get_curr_time, send_msg_to_frontend, parse_img_str}, profile::Profile};
 use crate::utilities;
 use crate::AppState;
 
@@ -440,9 +440,27 @@ pub fn cmd_send_text(msg: &str, state: State<AppState>, window: tauri::Window) {
     let msg = Message::Text(MessageData::new(
         name,
         uid,
-        utilities::gen_rand_id(),
-        utilities::get_curr_time(),
+        gen_rand_id(),
+        get_curr_time(),
         msg.as_bytes().to_vec()
+    ));
+
+    send_msgs_to_all_peers(vec![msg], &window);
+}
+
+#[tauri::command]
+pub fn cmd_send_img(img: &str, state: State<AppState>, window: tauri::Window) {
+    let (name, uid) = {
+        let profile = state.profile.lock().unwrap();
+        (profile.name.clone(), profile.uid)
+    };
+
+    let msg = Message::Image(MessageData::new(
+        name,
+        uid,
+        gen_rand_id(),
+        get_curr_time(),
+        parse_img_str(img),
     ));
 
     send_msgs_to_all_peers(vec![msg], &window);

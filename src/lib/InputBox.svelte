@@ -1,26 +1,13 @@
 <script lang="ts">
     import { profile } from '$lib/stores';
-
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
 	import { onMount } from 'svelte';
 	import { PROFILE_PIC_SIZE } from '$lib/contants';
-
-    let current_time = new Date();
-    setInterval(() => {
-        current_time = new Date();
-    }, 1000)
-
-
-    let canvas: Canvas;
-    onMount(() => {
-        let imageData = new ImageData(
-            new Uint8ClampedArray($profile?.pic || []),
-            PROFILE_PIC_SIZE, 
-            PROFILE_PIC_SIZE 
-        );
-        canvas.setImageData(imageData);
-    });
+    import brushIcon from '$lib/icons/brush.svg';
+	import { openModal } from 'svelte-modals';
+	import { writable } from 'svelte/store';
+	import BrushModal from './BrushModal.svelte';
 
     let message_str: string;
     function checkForEnter(e: KeyboardEvent) {
@@ -34,15 +21,19 @@
         }
     }
 
+    function openBrushModal() {
+        let s = writable(false);
+        openModal(BrushModal, {startClose: s});
+    }
 </script>
 
 <form id="container" >
     <div id="canvas-container">
         <Canvas 
-            bind:this={canvas}
             width={PROFILE_PIC_SIZE}
             height={PROFILE_PIC_SIZE}
             editable={false}
+            data={$profile?.pic}
             />
     </div>
 
@@ -51,12 +42,17 @@
             <span id="name">{$profile?.name}</span>
             <span id="uid">{$profile?.uid.toString(16)}</span>
         </header>
-        <textarea 
-            wrap="soft"
-            placeholder="Enter message here"
-            bind:value={message_str}
-            on:keypress={checkForEnter}
-            />
+        <div id="input-container">
+            <textarea 
+                wrap="soft"
+                placeholder="Enter message here"
+                bind:value={message_str}
+                on:keypress={checkForEnter}
+                />
+            <button id="input-toggle-btn" on:click={openBrushModal} >
+                <img src={brushIcon} alt="Send Pic"/>
+            </button>
+        </div>
     </div>
 </form>
 
@@ -97,6 +93,20 @@
         display: flex;
         flex-direction: row;
         justify-content: space-between;
+    }
+
+    #input-container {
+        width: 100%;
+    }
+
+    #input-toggle-btn {
+        background-color: transparent;
+        border-radius: 10px;
+        transition: 100ms background-color ease-in-out;
+    }
+
+    #input-toggle-btn:hover {
+        background-color: var(--ctp-latte-overlay0);
     }
 
     #name {

@@ -3,7 +3,7 @@ use ts_rs::TS;
 use tauri::State;
 
 use crate::AppState;
-use crate::utilities::{self, gen_rand_id, get_curr_time};
+use crate::utilities::{self, gen_rand_id, get_curr_time, parse_img_str};
 use crate::message::{Message, MessageData};
 
 #[derive(TS, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq)]
@@ -53,12 +53,7 @@ pub fn cmd_personalize_new_profile(
     }
 
     // pic being sent as comma-separated string, so convert back into array
-    profile.pic = new_pic
-        .split(',')
-        .map(|char| {
-            char.parse::<u8>().unwrap()
-        })
-        .collect();
+    profile.pic = parse_img_str(new_pic);
 
     state.connection.set_active(true);
 

@@ -35,6 +35,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             profile::cmd_personalize_new_profile,
             network::cmd_send_text,
+            network::cmd_send_img,
             utilities::cmd_get_known_users,
         ])
         .on_window_event(handle_window_event)

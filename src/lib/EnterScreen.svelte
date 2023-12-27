@@ -12,7 +12,7 @@
     let canvas: Canvas;
 
     function createProfile() {
-        let profile_pic_data = (canvas.getImageData()?.data || []).toString();
+        let profile_pic_data = canvas.getFormattedImageData();
         invoke('cmd_personalize_new_profile', {newName: entered_name, newPic: profile_pic_data})
             .then((r: any) => {
                 let resp = r as Profile;
@@ -98,17 +98,15 @@
         </section>
     {:else if state == 1}
         <section id="canvas-section">
-            <form on:submit={createProfile}>
-                <div id="canvas-container">
-                    <Canvas
-                        bind:this={canvas}
-                        width={PROFILE_PIC_SIZE}
-                        height={PROFILE_PIC_SIZE}
-                        editable={true}
-                        />
-                </div>
-                <input type="submit" value="Continue" />
-            </form>
+            <div id="canvas-container">
+                <Canvas
+                    bind:this={canvas}
+                    width={PROFILE_PIC_SIZE}
+                    height={PROFILE_PIC_SIZE}
+                    editable={true}
+                    />
+            </div>
+            <input type="button" value="Continue" on:click={createProfile}>
         </section>
     {:else if state == 2}
         <span 
@@ -177,7 +175,7 @@
         transition: background-size 800ms, opacity 400ms;
     }
 
-    #canvas-section input[type="submit"] {
+    #canvas-section input[type="button"] {
         position: absolute;
         top: 80vh;
     }
