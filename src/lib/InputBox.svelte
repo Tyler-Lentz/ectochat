@@ -8,6 +8,8 @@
 	import { openModal } from 'svelte-modals';
 	import { writable } from 'svelte/store';
 	import BrushModal from './BrushModal.svelte';
+    import usersIcon from '$lib/icons/users.svg';
+	import KnownUsersModal from './KnownUsersModal.svelte';
 
     let message_str: string;
     function checkForEnter(e: KeyboardEvent) {
@@ -25,6 +27,10 @@
         let s = writable(false);
         openModal(BrushModal, {startClose: s});
     }
+
+    function openKnownUsersModal() {
+        openModal(KnownUsersModal, {startClose: writable(false) });
+    }
 </script>
 
 <form id="container" >
@@ -35,6 +41,9 @@
             editable={false}
             data={$profile?.pic}
             />
+        <button class="icon-btn" on:click={openKnownUsersModal} >
+            <img src={usersIcon} alt="See Known Users"/>
+        </button>
     </div>
 
     <div id="message-container">
@@ -49,7 +58,7 @@
                 bind:value={message_str}
                 on:keypress={checkForEnter}
                 />
-            <button id="input-toggle-btn" on:click={openBrushModal} >
+            <button class="icon-btn" on:click={openBrushModal} >
                 <img src={brushIcon} alt="Send Pic"/>
             </button>
         </div>
@@ -70,6 +79,8 @@
     #canvas-container {
         margin-right: auto;
         display: flex;
+
+        flex-direction: column;
     }
 
     #message-container {
@@ -99,13 +110,14 @@
         width: 100%;
     }
 
-    #input-toggle-btn {
+    .icon-btn {
+        width: fit-content;
         background-color: transparent;
         border-radius: 10px;
         transition: 100ms background-color ease-in-out;
     }
 
-    #input-toggle-btn:hover {
+    .icon-btn:hover {
         background-color: var(--ctp-latte-overlay0);
     }
 

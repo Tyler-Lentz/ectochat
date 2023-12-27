@@ -39,4 +39,15 @@
         background-color: var(--ctp-latte-overlay0);
         opacity: 0.5;
     }
+
+    :global(.icon-btn) {
+        width: fit-content;
+        background-color: transparent;
+        border-radius: 10px;
+        transition: 100ms background-color ease-in-out;
+    }
+
+    :global(.icon-btn:hover) {
+        background-color: var(--ctp-latte-overlay0);
+    }
 </style>

@@ -1,7 +1,4 @@
 <script lang="ts">
-    // Slightly modified from svelte-modal documentation here:
-    // https://www.npmjs.com/package/svelte-modals
-
 	import type { Writable } from 'svelte/store';
 	import GenericModal from './GenericModal.svelte';
 
