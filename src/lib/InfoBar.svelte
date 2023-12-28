@@ -15,15 +15,17 @@
     });
 
     function openKnownUsersModal() {
-        openModal(KnownUsersModal, {startClose: writable(false) });
+        if (num_other_users > 0) {
+            openModal(KnownUsersModal, {startClose: writable(false) });
+        }
     }
 
 </script>
 
 <div class="container">
     <span>
-        Chatting with <span class="highlight">{num_other_users}</span> {(num_other_users == 1) ? "user" : "users"}
-        <button class="icon-btn" on:click={openKnownUsersModal} >
+        Chatting with <span class="highlight" data-active={(num_other_users > 0)}>{num_other_users}</span> {(num_other_users == 1) ? "user" : "users"}
+        <button class="icon-btn" data-active={(num_other_users > 0)} on:click={openKnownUsersModal} >
             <img src={usersIcon} alt="See Known Users"/>
         </button>
     </span>
@@ -49,8 +51,17 @@
         margin-left: 0.5em;
     }
 
+    .icon-btn:not([data-active="true"]) {
+        opacity: 0.5;
+        background: none !important; /* override global hover style */
+    }
+
     .highlight {
         padding: 0ch 0.5ch;
+        color: var(--ctp-latte-overlay2);
+    }
+
+    .highlight[data-active="true"] {
         color: var(--ctp-latte-blue);
     }
 </style>
