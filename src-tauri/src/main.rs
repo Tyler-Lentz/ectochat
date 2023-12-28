@@ -46,19 +46,6 @@ fn main() {
             connection: ConnectionState::new(),
         })
         .on_page_load(|window, _payload| {
-            let state: State<AppState> = window.state();
-            state.known_users.lock().unwrap().add_user(Profile::new("Test1".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test2".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test3".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test4".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test5".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test6".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test7".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test8".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test9".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test10".to_string()), &window);
-            state.known_users.lock().unwrap().add_user(Profile::new("Test11".to_string()), &window);
-
             network::run_background_threads(window);
         })
         .run(tauri::generate_context!())
