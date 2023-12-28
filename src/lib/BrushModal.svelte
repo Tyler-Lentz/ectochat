@@ -1,11 +1,8 @@
 <script lang="ts">
-    // Slightly modified from svelte-modal documentation here:
-    // https://www.npmjs.com/package/svelte-modals
-
 	import type { Writable } from 'svelte/store';
 	import GenericModal from './GenericModal.svelte';
 	import Canvas from './Canvas.svelte';
-	import { BRUSH_MODAL_Z_INDEX, MESSAGE_PIC_HEIGHT, MESSAGE_PIC_WIDTH} from './contants';
+	import { MODAL_Z_INDEX, MESSAGE_PIC_HEIGHT, MESSAGE_PIC_WIDTH} from './contants';
 	import { invoke } from '@tauri-apps/api';
 	import { onMount } from 'svelte';
 
@@ -60,7 +57,7 @@
     {startClose}
     modal_height={MESSAGE_PIC_HEIGHT + (PADDING * 2)}
     style={`padding: ${PADDING}px; scale: ${scale};`}
-    --z-index={BRUSH_MODAL_Z_INDEX}
+    --z-index={MODAL_Z_INDEX}
     >
     <div id="container">
         <Canvas 

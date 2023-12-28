@@ -165,7 +165,7 @@
 
     #info-bar {
         width: 100%;
-        height: 1lh;
+        height: 1.5lh;
         background-color: var(--ctp-latte-mantle);
         border-bottom: 1px solid var(--ctp-latte-surface0);
     }

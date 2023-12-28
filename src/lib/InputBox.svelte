@@ -2,7 +2,6 @@
     import { profile } from '$lib/stores';
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
-	import { onMount } from 'svelte';
 	import { PROFILE_PIC_SIZE } from '$lib/contants';
     import brushIcon from '$lib/icons/brush.svg';
 	import { openModal } from 'svelte-modals';
@@ -25,6 +24,7 @@
         let s = writable(false);
         openModal(BrushModal, {startClose: s});
     }
+
 </script>
 
 <form id="container" >
@@ -49,7 +49,7 @@
                 bind:value={message_str}
                 on:keypress={checkForEnter}
                 />
-            <button id="input-toggle-btn" on:click={openBrushModal} >
+            <button class="icon-btn" on:click={openBrushModal} >
                 <img src={brushIcon} alt="Send Pic"/>
             </button>
         </div>
@@ -70,6 +70,9 @@
     #canvas-container {
         margin-right: auto;
         display: flex;
+
+        flex-direction: column;
+        align-items: center;
     }
 
     #message-container {
@@ -97,16 +100,6 @@
 
     #input-container {
         width: 100%;
-    }
-
-    #input-toggle-btn {
-        background-color: transparent;
-        border-radius: 10px;
-        transition: 100ms background-color ease-in-out;
-    }
-
-    #input-toggle-btn:hover {
-        background-color: var(--ctp-latte-overlay0);
     }
 
     #name {
