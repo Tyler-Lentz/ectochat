@@ -45,6 +45,7 @@
         background-color: transparent;
         border-radius: 10px;
         transition: 100ms background-color ease-in-out;
+        outline: none;
     }
 
     :global(.icon-btn:hover) {

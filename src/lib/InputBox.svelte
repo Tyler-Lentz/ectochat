@@ -2,14 +2,11 @@
     import { profile } from '$lib/stores';
     import { invoke } from '@tauri-apps/api'
 	import Canvas from '$lib/Canvas.svelte';
-	import { onMount } from 'svelte';
 	import { PROFILE_PIC_SIZE } from '$lib/contants';
     import brushIcon from '$lib/icons/brush.svg';
 	import { openModal } from 'svelte-modals';
 	import { writable } from 'svelte/store';
 	import BrushModal from './BrushModal.svelte';
-    import usersIcon from '$lib/icons/users.svg';
-	import KnownUsersModal from './KnownUsersModal.svelte';
 
     let message_str: string;
     function checkForEnter(e: KeyboardEvent) {
@@ -28,9 +25,6 @@
         openModal(BrushModal, {startClose: s});
     }
 
-    function openKnownUsersModal() {
-        openModal(KnownUsersModal, {startClose: writable(false) });
-    }
 </script>
 
 <form id="container" >
@@ -41,9 +35,6 @@
             editable={false}
             data={$profile?.pic}
             />
-        <button class="icon-btn" on:click={openKnownUsersModal} >
-            <img src={usersIcon} alt="See Known Users"/>
-        </button>
     </div>
 
     <div id="message-container">
@@ -81,6 +72,7 @@
         display: flex;
 
         flex-direction: column;
+        align-items: center;
     }
 
     #message-container {
@@ -108,17 +100,6 @@
 
     #input-container {
         width: 100%;
-    }
-
-    .icon-btn {
-        width: fit-content;
-        background-color: transparent;
-        border-radius: 10px;
-        transition: 100ms background-color ease-in-out;
-    }
-
-    .icon-btn:hover {
-        background-color: var(--ctp-latte-overlay0);
     }
 
     #name {

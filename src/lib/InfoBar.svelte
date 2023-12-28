@@ -1,5 +1,9 @@
 <script lang="ts">
 	import { known_users } from "$lib/stores";
+    import usersIcon from '$lib/icons/users.svg';
+	import { openModal } from "svelte-modals";
+	import KnownUsersModal from "./KnownUsersModal.svelte";
+	import { writable } from "svelte/store";
 
     let num_other_users = 0;
     known_users.subscribe((new_known_users) => {
@@ -10,16 +14,23 @@
         }
     });
 
+    function openKnownUsersModal() {
+        openModal(KnownUsersModal, {startClose: writable(false) });
+    }
+
 </script>
 
-<div id="container">
+<div class="container">
     <span>
         Chatting with <span class="highlight">{num_other_users}</span> {(num_other_users == 1) ? "user" : "users"}
+        <button class="icon-btn" on:click={openKnownUsersModal} >
+            <img src={usersIcon} alt="See Known Users"/>
+        </button>
     </span>
 </div>
 
 <style>
-    #container {
+    .container {
         padding: 0;
         margin: 0;
 
@@ -29,7 +40,17 @@
         justify-content: space-around;
     }
 
+    .container > span {
+        display: flex;
+        align-items: center;
+    }
+
+    .icon-btn {
+        margin-left: 0.5em;
+    }
+
     .highlight {
+        padding: 0ch 0.5ch;
         color: var(--ctp-latte-blue);
     }
 </style>
