@@ -5,6 +5,7 @@
 	import { known_users, msg_history } from '$lib/stores';
 	import type { Message } from '$lib/bindings/Message';
 	import type { KnownUsers } from "./bindings/KnownUsers";
+	import Popup from "./Popup.svelte";
 
 	let initialized = false;	
 
