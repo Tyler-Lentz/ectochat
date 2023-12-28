@@ -7,6 +7,7 @@
 	import type { KnownUsers } from '$lib/bindings/KnownUsers';
 	import ProfileCard from '$lib/ProfileCard.svelte';
 	import { profile } from '$lib/stores';
+	import { MODAL_Z_INDEX } from './contants';
 
     export let isOpen: boolean;
     export let startClose: Writable<boolean>;
@@ -26,6 +27,7 @@
     {isOpen}
     {startClose}
     modal_height={400}
+    --z-index={MODAL_Z_INDEX}
     >
     <div id="modal-container">
         <div id="profile-container">

@@ -5,4 +5,4 @@ export const MESSAGE_PIC_HEIGHT = PROFILE_PIC_SIZE * 2;
 export const MESSAGE_PIC_WIDTH = PROFILE_PIC_SIZE * 4;
 
 export const ACK_Z_INDEX = 100;
-export const BRUSH_MODAL_Z_INDEX = 101;
+export const MODAL_Z_INDEX = 101;
